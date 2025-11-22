@@ -1,0 +1,258 @@
+# Authentication Overview
+
+Understanding authentication in AuthX.
+
+## What is Authentication?
+
+Authentication is the process of verifying that a user is who they claim to be. In AuthX, we use:
+
+- **Email & Password** - Primary authentication method
+- **JWT Tokens** - Stateless session management
+- **Refresh Tokens** - Long-lived tokens for generating new access tokens
+- **Account Security** - Protection against brute force attacks
+
+## Authentication Flow
+
+### Registration Flow
+
+```
+User enters credentials
+        ↓
+Validate input format
+        ↓
+Check if email exists
+        ↓
+Hash password with bcrypt
+        ↓
+Save user to database
+        ↓
+Generate JWT + Refresh Token
+        ↓
+Return tokens to client
+```
+
+### Login Flow
+
+```
+User enters email & password
+        ↓
+Find user by email
+        ↓
+Check if account locked
+        ↓
+Verify password
+        ↓
+Reset failed attempts
+        ↓
+Generate new tokens
+        ↓
+Return tokens to client
+```
+
+### Password Reset Flow
+
+```
+User requests password reset
+        ↓
+Send OTP to email
+        ↓
+User receives OTP
+        ↓
+User submits OTP + new password
+        ↓
+Verify OTP validity
+        ↓
+Hash new password
+        ↓
+Update user record
+        ↓
+Invalidate all tokens
+```
+
+## JWT (JSON Web Tokens)
+
+### What is JWT?
+
+JWT is a compact, self-contained token format that contains:
+- **Header** - Token type and signing algorithm
+- **Payload** - User data and claims
+- **Signature** - Cryptographic signature for verification
+
+### Token Format
+
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJpYXQiOjE2MzMyMjk5MDB9
+.SIGNATURE
+```
+
+Broken down:
+1. **Header** - Base64 encoded `{"alg":"HS256","typ":"JWT"}`
+2. **Payload** - Base64 encoded user data
+3. **Signature** - HMAC-SHA256 signature
+
+### Token Lifecycle
+
+```
+Generate Token (1 hour expiry)
+        ↓
+Include in Authorization header
+        ↓
+API validates signature
+        ↓
+API extracts user ID
+        ↓
+Token expires after 1 hour
+        ↓
+Use refresh token to get new access token
+```
+
+## Refresh Tokens
+
+### Purpose
+
+Refresh tokens allow users to get new access tokens without re-entering credentials.
+
+### Characteristics
+
+- **Long-lived** - Valid for 1 year
+- **Rotated** - New token issued with each refresh
+- **Revocable** - Can be invalidated manually
+- **Stored Securely** - Should be stored in httpOnly cookies
+
+### Token Rotation
+
+Each time you refresh:
+1. Old refresh token is revoked
+2. New refresh token is issued
+3. This invalidates the old token immediately
+
+Benefits:
+- Limits damage if token is stolen
+- Creates audit trail
+- Allows detecting compromised accounts
+
+## Password Security
+
+### Password Requirements
+
+Passwords must meet these requirements:
+- **Minimum 8 characters**
+- **At least 1 uppercase letter** (A-Z)
+- **At least 1 lowercase letter** (a-z)
+- **At least 1 number** (0-9)
+- **At least 1 special character** (!@#$%^&*)
+
+### Password Hashing
+
+Passwords are hashed using **bcrypt** with:
+- **Algorithm** - Bcrypt (industry standard)
+- **Rounds** - 12 in production, 10 in development
+- **Salt** - Automatically generated and stored
+
+This ensures:
+- Passwords are never stored in plain text
+- Same password produces different hash (due to salt)
+- Passwords cannot be reversed
+
+## Account Lockout
+
+### Protection Against Brute Force
+
+After **5 failed login attempts** within 30 minutes:
+- Account is locked
+- Login attempts are blocked
+- Account automatically unlocks after 30 minutes
+
+This prevents:
+- Password guessing attacks
+- Dictionary attacks
+- Brute force attacks
+
+## Two-Factor Authentication (Optional)
+
+For enhanced security, consider implementing:
+
+- **Email OTP** - One-time password via email
+- **TOTP** - Time-based one-time password (Google Authenticator)
+- **SMS OTP** - One-time password via SMS
+- **Security Keys** - Hardware security keys
+
+## Best Practices
+
+### For Users
+
+1. **Use strong passwords** - Meet all requirements
+2. **Never share tokens** - Keep tokens confidential
+3. **Logout on shared devices** - Always logout after use
+4. **Monitor account activity** - Check audit logs regularly
+5. **Enable 2FA** - Use two-factor authentication if available
+
+### For Developers
+
+1. **Use HTTPS** - Always encrypt tokens in transit
+2. **Store tokens securely** - Use httpOnly cookies
+3. **Validate tokens** - Always verify token signature
+4. **Implement rate limiting** - Prevent brute force
+5. **Audit all auth events** - Log everything for compliance
+6. **Rotate secrets** - Change JWT secret periodically
+7. **Keep dependencies updated** - Security patches
+
+## Common Scenarios
+
+### Staying Logged In
+
+```javascript
+// On app start, check if token is expired
+const token = localStorage.getItem('accessToken');
+if (isTokenExpired(token)) {
+  // Use refresh token to get new token
+  await refreshAccessToken();
+}
+```
+
+### Handling Token Expiry
+
+```javascript
+// When API returns 401 Unauthorized
+if (response.status === 401) {
+  // Try to refresh token
+  const newToken = await refreshToken();
+  if (newToken) {
+    // Retry original request with new token
+  } else {
+    // Redirect to login
+  }
+}
+```
+
+### Automatic Logout
+
+```javascript
+// Logout after 1 hour of inactivity
+setTimeout(() => {
+  logout();
+}, 1 * 60 * 60 * 1000); // 1 hour
+```
+
+## Security Checklist
+
+- [ ] Enforce HTTPS in production
+- [ ] Use secure token storage
+- [ ] Implement rate limiting
+- [ ] Enable account lockout
+- [ ] Hash passwords with bcrypt
+- [ ] Validate token signatures
+- [ ] Log all auth events
+- [ ] Rotate secrets regularly
+- [ ] Monitor for suspicious patterns
+- [ ] Implement email verification
+- [ ] Use strong JWT secret (32+ characters)
+- [ ] Set appropriate token expiry times
+
+---
+
+**Next:**
+- [Authorization](./authorization) - Learn about access control
+- [Token Management](./tokens) - Understand token lifecycle
+- [Login Endpoint](../api-reference/auth/login) - Use the login API

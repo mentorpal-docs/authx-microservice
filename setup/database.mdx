@@ -1,0 +1,418 @@
+# Database Setup
+
+Setting up MongoDB and initializing collections for AuthX.
+
+## Database Overview
+
+AuthX uses **MongoDB** with **Mongoose ODM** for data persistence.
+
+```
+┌─────────────────────────────────────────┐
+│         MongoDB Database                │
+├─────────────────────────────────────────┤
+│ Collections:                            │
+│  • users                                │
+│  • refreshtokens                        │
+│  • otps                                 │
+│  • auditlogs                            │
+└─────────────────────────────────────────┘
+```
+
+## Installation
+
+### Option 1: Docker (Recommended)
+
+Easiest and most isolated:
+
+```bash
+# Start MongoDB with Docker Compose
+docker-compose up -d mongodb
+
+# Verify it's running
+docker-compose ps
+
+# View logs
+docker-compose logs mongodb
+
+# Connect with mongosh
+docker-compose exec mongodb mongosh
+```
+
+### Option 2: Local Installation
+
+**macOS:**
+```bash
+brew install mongodb-community
+brew services start mongodb-community
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install -y mongodb
+sudo systemctl start mongodb
+```
+
+**Windows:**
+Download from [MongoDB Download Center](https://www.mongodb.com/try/download/community)
+
+### Option 3: MongoDB Atlas (Cloud)
+
+```bash
+# Create free account at https://www.mongodb.com/cloud/atlas
+
+# Create cluster
+# Generate connection string
+# Update .env:
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/authx
+```
+
+## Connection Verification
+
+```bash
+# Connect using mongosh
+mongosh
+
+# List databases
+show databases
+
+# Switch to authx database
+use authx
+
+# Show collections
+show collections
+
+# Expected output:
+# users
+# refreshtokens
+# otps
+# auditlogs
+```
+
+Or programmatically:
+
+```bash
+# Test MongoDB connection
+npm run db:test
+
+# Expected output:
+# ✓ MongoDB Connected
+# ✓ Database: authx
+# ✓ Collections: 4
+```
+
+## Collections Overview
+
+### Users Collection
+
+Stores user account information:
+
+```javascript
+db.users.find().pretty()
+
+// Sample document:
+{
+  _id: ObjectId("507f1f77bcf86cd799439011"),
+  email: "john@example.com",
+  firstName: "John",
+  lastName: "Doe",
+  password: "$2b$12$...", // bcrypt hash
+  role: "user",
+  isActive: true,
+  failedLoginAttempts: 0,
+  accountLockedUntil: null,
+  preferences: {
+    notifications: true,
+    emailFrequency: "daily"
+  },
+  createdAt: ISODate("2025-11-23T10:30:00Z"),
+  updatedAt: ISODate("2025-11-23T10:30:00Z")
+}
+```
+
+### Refresh Tokens Collection
+
+Stores refresh tokens for user sessions:
+
+```javascript
+{
+  _id: ObjectId("507f1f77bcf86cd799439012"),
+  userId: ObjectId("507f1f77bcf86cd799439011"),
+  token: "$2b$12$...", // hashed token
+  expiresAt: ISODate("2026-11-23T10:30:00Z"),
+  isRevoked: false,
+  revokedAt: null,
+  deviceInfo: {
+    userAgent: "Mozilla/5.0...",
+    ipAddress: "192.168.1.1"
+  },
+  createdAt: ISODate("2025-11-23T10:30:00Z")
+}
+```
+
+### OTPs Collection
+
+Stores one-time passwords for password recovery:
+
+```javascript
+{
+  _id: ObjectId("507f1f77bcf86cd799439013"),
+  email: "john@example.com",
+  otp: "123456",
+  type: "password_reset",
+  expiresAt: ISODate("2025-11-23T10:40:00Z"),
+  isUsed: false,
+  attempts: 2,
+  createdAt: ISODate("2025-11-23T10:30:00Z")
+}
+```
+
+### Audit Logs Collection
+
+Stores audit trail of all actions:
+
+```javascript
+{
+  _id: ObjectId("507f1f77bcf86cd799439014"),
+  userId: ObjectId("507f1f77bcf86cd799439011"),
+  action: "login",
+  status: "success",
+  ipAddress: "192.168.1.1",
+  userAgent: "Mozilla/5.0...",
+  timestamp: ISODate("2025-11-23T10:30:00Z"),
+  metadata: {
+    deviceId: "device123",
+    location: "New York, USA"
+  }
+}
+```
+
+## Indexes
+
+Collections include indexes for performance:
+
+```javascript
+// Users collection
+db.users.getIndexes()
+
+// Expected indexes:
+// _id (default)
+// email (unique)
+// isActive
+// role
+
+// Refresh Tokens collection
+db.refreshtokens.getIndexes()
+
+// Expected indexes:
+// _id (default)
+// userId
+// token
+// expiresAt (TTL index)
+
+// OTPs collection
+db.otps.getIndexes()
+
+// Expected indexes:
+// _id (default)
+// email
+// expiresAt (TTL index - auto-delete)
+
+// Audit Logs collection
+db.auditlogs.getIndexes()
+
+// Expected indexes:
+// _id (default)
+// userId
+// timestamp
+// action
+```
+
+## Database Initialization
+
+Collections are automatically created when:
+- Server starts
+- Models are initialized
+- Mongoose connects
+
+Automatic initialization includes:
+- ✓ Collection creation
+- ✓ Index creation
+- ✓ Validation schema setup
+- ✓ TTL configuration
+
+## Querying with Mongoose
+
+### Find Users
+
+```javascript
+// Find by email
+const user = await User.findOne({ email: 'john@example.com' });
+
+// Find by ID
+const user = await User.findById('507f1f77bcf86cd799439011');
+
+// Find all active users
+const users = await User.find({ isActive: true });
+
+// Find with pagination
+const users = await User
+  .find()
+  .limit(10)
+  .skip(0)
+  .sort({ createdAt: -1 });
+```
+
+### Create User
+
+```javascript
+const user = await User.create({
+  email: 'john@example.com',
+  password: 'SecurePass123!',
+  firstName: 'John',
+  lastName: 'Doe'
+});
+
+// Password is automatically hashed via middleware
+```
+
+### Update User
+
+```javascript
+// Update fields
+await User.findByIdAndUpdate(userId, {
+  firstName: 'Jonathan',
+  updatedAt: new Date()
+});
+```
+
+### Delete User
+
+```javascript
+// Soft delete (mark as inactive)
+await User.findByIdAndUpdate(userId, {
+  isActive: false
+});
+
+// Hard delete
+await User.findByIdAndDelete(userId);
+```
+
+## Backup and Restore
+
+### Backup MongoDB
+
+```bash
+# Backup entire database
+mongodump --uri="mongodb://localhost:27017/authx" \
+  --out=./backups
+
+# Backup specific collection
+mongodump --uri="mongodb://localhost:27017/authx" \
+  --collection=users \
+  --out=./backups
+
+# Backup to archive
+mongodump --uri="mongodb://localhost:27017/authx" \
+  --archive=authx-backup.archive
+```
+
+### Restore MongoDB
+
+```bash
+# Restore entire database
+mongorestore --uri="mongodb://localhost:27017/authx" \
+  ./backups/authx
+
+# Restore from archive
+mongorestore --uri="mongodb://localhost:27017/authx" \
+  --archive=authx-backup.archive
+```
+
+## MongoDB Atlas Backups
+
+Enable automatic backups in MongoDB Atlas:
+
+1. Go to Database Backups
+2. Enable Automatic Backups
+3. Set retention period (30 days default)
+4. Configure backup window
+
+## Database Maintenance
+
+### Check Collection Size
+
+```javascript
+// Check collection sizes
+db.users.stats()
+db.refreshtokens.stats()
+db.otps.stats()
+db.auditlogs.stats()
+```
+
+### Remove Old Data
+
+```javascript
+// Delete old audit logs (older than 90 days)
+db.auditlogs.deleteMany({
+  timestamp: { $lt: new Date(Date.now() - 90*24*60*60*1000) }
+});
+
+// Delete expired OTPs (manual, normally auto-delete)
+db.otps.deleteMany({
+  expiresAt: { $lt: new Date() }
+});
+```
+
+### Compact Database
+
+```javascript
+// Reclaim unused space
+db.runCommand({ compact: 'users' });
+db.runCommand({ compact: 'refreshtokens' });
+```
+
+## Monitoring
+
+### Check Connection Health
+
+```bash
+npm run db:health
+
+# Expected output:
+# ✓ MongoDB Connection: OK
+# ✓ Database Size: 50MB
+# ✓ Collections: 4
+# ✓ Indexes: Optimized
+# ✓ Replication: Not configured
+```
+
+### Monitor Performance
+
+```javascript
+// Check slow queries
+db.setProfilingLevel(1, { slowms: 100 })
+
+// View profiling data
+db.system.profile.find().pretty()
+```
+
+## Database Security Checklist
+
+- [ ] Enable authentication
+- [ ] Set strong database password
+- [ ] Restrict network access
+- [ ] Enable encryption at rest
+- [ ] Enable encryption in transit (TLS)
+- [ ] Configure firewall rules
+- [ ] Regular backups enabled
+- [ ] Test backup restoration
+- [ ] Monitor access logs
+- [ ] Review user permissions
+- [ ] Keep MongoDB updated
+
+---
+
+**Next:**
+- [Configuration](./configuration) - Environment setup
+- [Installation](./installation) - Install dependencies
+- [Running Server](../development/running-server) - Start developing

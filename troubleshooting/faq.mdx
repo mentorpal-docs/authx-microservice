@@ -1,0 +1,483 @@
+# Frequently Asked Questions
+
+Common questions and answers about AuthX.
+
+## General
+
+### What is AuthX?
+
+AuthX is a production-ready authentication and user management microservice built with Node.js, Express, and MongoDB. It provides:
+
+- User registration and login
+- Token-based authentication (JWT)
+- Password reset flows
+- Rate limiting and account security
+- Comprehensive audit logging
+
+### Is AuthX suitable for production?
+
+Yes! AuthX is designed for production use with:
+- Security best practices implemented
+- Comprehensive error handling
+- Performance optimization
+- Deployment configurations (Docker, PM2, Kubernetes)
+- Monitoring and logging
+
+### What are the system requirements?
+
+**Minimum:**
+- Node.js 18+
+- 512 MB RAM
+- 2 GB disk space
+
+**Recommended:**
+- Node.js 18+
+- 2+ GB RAM
+- 4+ cores CPU
+- 10 GB disk space
+
+See [Requirements](../requirements) for details.
+
+## Installation
+
+### How do I install AuthX?
+
+```bash
+git clone <repository>
+cd authx
+npm install
+docker-compose up -d    # Start MongoDB & Redis
+npm run dev             # Start server
+```
+
+See [Installation Guide](../setup/installation) for detailed steps.
+
+### Do I need Docker?
+
+No, but it's recommended. You can:
+- Use Docker Compose (easiest)
+- Install MongoDB and Redis locally
+- Use MongoDB Atlas (cloud) and Redis Cloud
+
+### Why am I getting "ENOENT: no such file or directory"?
+
+You're likely missing the `.env` file:
+
+```bash
+cp .env.development .env
+npm run dev
+```
+
+### npm install fails - what should I do?
+
+```bash
+# Clear npm cache
+npm cache clean --force
+
+# Remove node_modules
+rm -rf node_modules
+
+# Reinstall
+npm install
+```
+
+## Configuration
+
+### How do I set up environment variables?
+
+```bash
+# Copy template
+cp .env.development .env
+
+# Edit with your values
+nano .env
+
+# Required variables:
+NODE_ENV=development
+MONGODB_URI=mongodb://localhost:27017/authx
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your-secret-key
+```
+
+See [Environment Configuration](../setup/environment) for all variables.
+
+### What's a good JWT_SECRET?
+
+Use a strong, random string (32+ characters):
+
+```bash
+# Generate strong secret
+openssl rand -base64 32
+
+# Or
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### Can I change the port?
+
+Yes, via environment variable:
+
+```bash
+PORT=3001 npm run dev
+
+# Or in .env
+PORT=3001
+```
+
+## Database
+
+### How do I reset the database?
+
+```bash
+# Drop database (all data deleted!)
+npm run db:reset
+
+# Or manually
+mongosh
+use authx
+db.dropDatabase()
+```
+
+### How do I backup my database?
+
+```bash
+# Using mongodump
+mongodump --uri="mongodb://localhost:27017/authx" \
+  --out=./backup
+
+# Using MongoDB Atlas automatic backups
+# See deployment guide
+```
+
+### What collections does AuthX use?
+
+1. **users** - User accounts
+2. **refreshtokens** - Refresh tokens
+3. **otps** - One-time passwords
+4. **auditlogs** - Action audit trail
+
+See [Database Setup](../setup/database) for details.
+
+## Authentication
+
+### Why is my token invalid?
+
+Possible reasons:
+- Token has expired (1-hour lifetime)
+- Token was modified
+- JWT_SECRET changed
+- Token is malformed
+
+Solution: Get a new token by logging in or refreshing.
+
+### How do I refresh an expired token?
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "your-refresh-token"}'
+```
+
+### Why does login fail after password change?
+
+After password change, all tokens are invalidated. Log in again with the new password.
+
+### How do I handle token expiry in my app?
+
+```javascript
+// Check before making request
+if (isTokenExpired(token)) {
+  await refreshToken();
+}
+
+// Or handle 401 response
+if (response.status === 401) {
+  await refreshToken();
+  // Retry request
+}
+```
+
+### What's the password policy?
+
+Passwords must have:
+- Minimum 8 characters
+- At least 1 uppercase letter
+- At least 1 lowercase letter
+- At least 1 number
+- At least 1 special character (!@#$%^&*)
+
+## API Usage
+
+### How do I call the signup endpoint?
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!",
+    "firstName": "John",
+    "lastName": "Doe"
+  }'
+```
+
+### How do I authenticate requests?
+
+Include the access token in the Authorization header:
+
+```bash
+curl http://localhost:3000/api/v1/users/profile \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### What if I get 401 Unauthorized?
+
+Either:
+- Token is missing/invalid
+- Token has expired (refresh it)
+- User has been deactivated
+
+### What if I get 429 Too Many Requests?
+
+You've exceeded rate limits. Wait before retrying:
+
+```json
+{
+  "success": false,
+  "message": "Too many requests",
+  "retryAfter": 60
+}
+```
+
+Wait `retryAfter` seconds before retrying.
+
+### How do I log out?
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/logout \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+This revokes the refresh token immediately.
+
+## Deployment
+
+### How do I deploy to production?
+
+Three main options:
+
+1. **Docker** - Containerized, scale with Kubernetes
+2. **PM2** - Process manager on VPS
+3. **Heroku** - PaaS for quick deployment
+
+See [Deployment Guide](../deployment/overview).
+
+### Should I use MongoDB Atlas or local?
+
+**Use MongoDB Atlas for:**
+- Production (managed, secure)
+- Multiple servers (shared database)
+- Automatic backups
+- High availability
+
+**Use local MongoDB for:**
+- Development
+- Testing
+- Single-server deployments
+
+### How do I handle CORS in production?
+
+Set allowed origins in `.env`:
+
+```env
+CORS_ORIGIN=https://app.example.com,https://www.example.com
+```
+
+### How do I enable HTTPS?
+
+Use an SSL certificate:
+
+```bash
+# Self-signed (development)
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
+
+# Let's Encrypt (production)
+# Use Certbot or your hosting provider
+```
+
+Then in Node.js:
+
+```javascript
+const https = require('https');
+const fs = require('fs');
+
+const options = {
+  key: fs.readFileSync('key.pem'),
+  cert: fs.readFileSync('cert.pem')
+};
+
+https.createServer(options, app).listen(443);
+```
+
+## Troubleshooting
+
+### Server won't start
+
+Check for:
+- Port already in use: `lsof -ti:3000`
+- Missing environment: `ls -la .env`
+- Database not running: `docker-compose ps`
+- Missing dependencies: `npm install`
+
+### "Cannot find module" errors
+
+```bash
+# Reinstall dependencies
+rm -rf node_modules
+npm install
+```
+
+### Email not sending
+
+Check:
+- Email configuration in `.env`
+- SMTP credentials correct
+- Email service enabled
+- Firewall not blocking SMTP port
+- No "Less secure apps" block (Gmail)
+
+### Database connection timeout
+
+```bash
+# Verify MongoDB is running
+docker-compose ps
+# or
+mongosh
+
+# Check connection string
+echo $MONGODB_URI
+```
+
+### Performance is slow
+
+Possible causes:
+- Insufficient database indexes
+- No connection pooling
+- High concurrency without load balancing
+- Unoptimized queries
+
+Solutions:
+- Check [Performance Best Practices](../best-practices/performance)
+- Enable caching with Redis
+- Use load balancer
+- Upgrade hardware
+
+## Security
+
+### How secure is AuthX?
+
+AuthX implements:
+- bcrypt password hashing (12 rounds)
+- JWT token signing (HS256)
+- Rate limiting and account lockout
+- Input validation
+- CORS protection
+- HTTPS support
+- Comprehensive audit logging
+- Account lockout after 5 failed attempts
+
+See [Security Overview](../concepts/security).
+
+### Can I use it with 2FA?
+
+Currently no, but you can:
+- Add TOTP support
+- Integrate with Auth0
+- Implement OTP via email/SMS
+
+### How do I reset a user's password?
+
+Users can self-serve via:
+1. Click "Forgot Password"
+2. Receive OTP via email
+3. Enter OTP and new password
+
+Admins can directly update via database (not exposed via API yet).
+
+### Should I hash passwords before sending?
+
+No. Always:
+1. Send passwords via HTTPS
+2. Let server handle hashing
+3. Never hash on client (reduces security)
+
+## Monitoring
+
+### How do I check if server is running?
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Response should be:
+# {"status":"ok"}
+```
+
+### How do I view logs?
+
+```bash
+# Follow logs in real-time
+tail -f logs/combined.log
+
+# Error logs only
+tail -f logs/error.log
+
+# Last 100 lines
+tail -n 100 logs/combined.log
+```
+
+### How do I monitor in production?
+
+Use:
+- PM2 Plus (free tier for basic monitoring)
+- Datadog (production-grade APM)
+- New Relic (performance monitoring)
+- Sentry (error tracking)
+
+## Getting Help
+
+### Where can I find documentation?
+
+- [Full Documentation](../introduction)
+- [API Reference](../api-reference/auth/signup)
+- [Deployment Guide](../deployment/overview)
+- [GitHub Issues](https://github.com/issues)
+
+### How do I report a bug?
+
+1. Check [Common Issues](./common-issues)
+2. Search GitHub issues
+3. Create new issue with:
+   - Steps to reproduce
+   - Expected behavior
+   - Actual behavior
+   - Environment details
+
+### How do I contribute?
+
+1. Fork the repository
+2. Create feature branch
+3. Make changes
+4. Submit pull request
+5. Await review and merge
+
+### Is there a community forum?
+
+Coming soon! For now:
+- GitHub Discussions
+- Stack Overflow (tag: authx)
+- Community Slack
+
+---
+
+**Still have questions?** Check [Common Issues](./common-issues) or ask on GitHub Issues.

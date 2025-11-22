@@ -1,0 +1,110 @@
+# Update User Profile
+
+Update the authenticated user's profile information.
+
+## Endpoint
+
+```
+PUT /api/v1/users/profile
+```
+
+## Description
+
+Updates the profile information of the authenticated user. Only the fields provided will be updated.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer {accessToken}`
+</ParamField>
+
+## Request
+
+<ParamField body="firstName" type="string" optional>
+  Updated first name (2-50 characters)
+</ParamField>
+
+<ParamField body="lastName" type="string" optional>
+  Updated last name (2-50 characters)
+</ParamField>
+
+<ParamField body="email" type="string" optional>
+  Updated email (must be unique)
+</ParamField>
+
+## Request Body
+
+```json
+{
+  "firstName": "Jonathan",
+  "lastName": "Smith"
+}
+```
+
+## Response
+
+### Success (200)
+
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "email": "john.doe@example.com",
+    "firstName": "Jonathan",
+    "lastName": "Smith",
+    "role": "user",
+    "isActive": true,
+    "updatedAt": "2025-11-23T11:00:00.000Z"
+  }
+}
+```
+
+### Validation Error (400)
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "firstName",
+      "message": "First name must be between 2 and 50 characters"
+    }
+  ]
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="JavaScript">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+
+    const response = await fetch(
+      'http://localhost:3000/api/v1/users/profile',
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          firstName: 'Jonathan',
+          lastName: 'Smith'
+        })
+      }
+    );
+
+    const data = await response.json();
+    ```
+  </Tab>
+</Tabs>
+
+## Security Notes
+
+- Email changes may require verification
+- Only user's own profile can be updated
+- Audit logged for all updates

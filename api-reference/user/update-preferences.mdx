@@ -1,0 +1,90 @@
+# Update User Preferences
+
+Update the authenticated user's preferences and settings.
+
+## Endpoint
+
+```
+PUT /api/v1/users/preferences
+```
+
+## Description
+
+Updates the user's saved preferences. Only provided fields are updated.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer {accessToken}`
+</ParamField>
+
+## Request
+
+<ParamField body="notifications" type="boolean" optional>
+  Enable/disable notifications
+</ParamField>
+
+<ParamField body="emailFrequency" type="string" optional>
+  Email frequency: "daily", "weekly", "monthly", "never"
+</ParamField>
+
+<ParamField body="theme" type="string" optional>
+  Theme preference: "light", "dark", "auto"
+</ParamField>
+
+<ParamField body="language" type="string" optional>
+  Language: "en", "es", "fr", "de", etc.
+</ParamField>
+
+## Request Body
+
+```json
+{
+  "theme": "dark",
+  "emailFrequency": "weekly"
+}
+```
+
+## Response
+
+### Success (200)
+
+```json
+{
+  "success": true,
+  "message": "Preferences updated successfully",
+  "data": {
+    "notifications": true,
+    "emailFrequency": "weekly",
+    "theme": "dark",
+    "language": "en"
+  }
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="JavaScript">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+
+    const response = await fetch(
+      'http://localhost:3000/api/v1/users/preferences',
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          theme: 'dark',
+          emailFrequency: 'weekly'
+        })
+      }
+    );
+
+    const data = await response.json();
+    ```
+  </Tab>
+</Tabs>

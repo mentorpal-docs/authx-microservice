@@ -1,0 +1,369 @@
+# Token Management
+
+Understanding JWT and refresh token management in AuthX.
+
+## Token Types
+
+### Access Token
+
+Short-lived token used to access protected APIs.
+
+**Characteristics:**
+- **Format:** JWT (JSON Web Token)
+- **Lifetime:** 1 hour
+- **Usage:** Include in Authorization header
+- **Storage:** Memory or localStorage (not httpOnly)
+- **Revocation:** Automatic after expiry
+
+**Payload:**
+```json
+{
+  "userId": "507f1f77bcf86cd799439011",
+  "iat": 1632922800,
+  "exp": 1632926400
+}
+```
+
+### Refresh Token
+
+Long-lived token used to obtain new access tokens.
+
+**Characteristics:**
+- **Format:** Random string (hashed)
+- **Lifetime:** 1 year
+- **Usage:** Exchange for new access token
+- **Storage:** httpOnly cookie (secure)
+- **Revocation:** Can be revoked manually
+
+**Benefits:**
+- User doesn't need to provide credentials frequently
+- Old token can be revoked when compromised
+- Enables token rotation
+
+## Token Flow
+
+```
+User logs in
+    ↓
+Generate Access Token (1hr)
+Generate Refresh Token (1yr)
+    ↓
+Return both tokens
+    ↓
+[1 hour passes]
+    ↓
+Access Token expires
+    ↓
+Use Refresh Token to get new Access Token
+    ↓
+Old Refresh Token is revoked
+    ↓
+New Refresh Token is issued
+    ↓
+User can continue using API
+```
+
+## Using Tokens
+
+### Setting Authorization Header
+
+```javascript
+// With access token
+const response = await fetch('http://localhost:3000/api/v1/users/profile', {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`
+  }
+});
+```
+
+### Token Format
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+## Token Refresh Flow
+
+### Automatic Refresh
+
+```javascript
+// When token expires
+if (isTokenExpired(accessToken)) {
+  const newAccessToken = await refreshAccessToken(refreshToken);
+  
+  // Update stored token
+  localStorage.setItem('accessToken', newAccessToken);
+  
+  // Retry original request
+  await originalRequest();
+}
+```
+
+### Manual Refresh
+
+```javascript
+const response = await fetch(
+  'http://localhost:3000/api/v1/auth/refresh',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      refreshToken: localStorage.getItem('refreshToken')
+    })
+  }
+);
+
+const { accessToken, refreshToken } = await response.json();
+```
+
+## Token Rotation
+
+Each refresh operation:
+1. Invalidates old refresh token
+2. Issues new refresh token
+3. Issues new access token
+
+Benefits:
+- Limits token compromise window
+- Creates audit trail
+- Detects token reuse (suspicious)
+
+## Token Storage
+
+### Access Token Storage
+
+**localStorage (if XSS mitigation in place):**
+```javascript
+localStorage.setItem('accessToken', token);
+const token = localStorage.getItem('accessToken');
+```
+
+**Memory (most secure):**
+```javascript
+let accessToken = null;
+
+function login(credentials) {
+  const response = await api.post('/login', credentials);
+  accessToken = response.data.accessToken;
+}
+```
+
+### Refresh Token Storage
+
+**httpOnly Cookie (recommended):**
+```javascript
+// Automatic with httpOnly flag
+// Cannot be accessed by JavaScript
+// Protected against XSS attacks
+```
+
+**Secure Storage (mobile):**
+```javascript
+// iOS: Keychain
+// Android: Keystore
+// Not in SharedPreferences
+```
+
+## Token Validation
+
+### On Every Request
+
+```javascript
+// Middleware validates token
+const authenticate = (req, res, next) => {
+  const token = extractToken(req);
+  
+  if (!token) {
+    throw new AuthenticationError('No token provided');
+  }
+  
+  try {
+    const payload = verifyToken(token);
+    req.user = payload;
+    next();
+  } catch (error) {
+    throw new AuthenticationError('Invalid token');
+  }
+};
+```
+
+### Signature Verification
+
+```javascript
+// Verify HMAC-SHA256 signature
+const payload = jwt.verify(token, JWT_SECRET);
+```
+
+Token is valid only if:
+- Signature matches
+- Token hasn't expired
+- Secret is correct
+
+## Handling Expired Tokens
+
+### Client-Side
+
+```javascript
+// Check token expiry before request
+function isTokenExpired(token) {
+  const decoded = jwt_decode(token);
+  return decoded.exp * 1000 < Date.now();
+}
+
+// Auto-refresh if needed
+if (isTokenExpired(accessToken)) {
+  await refreshAccessToken();
+}
+```
+
+### Server-Side
+
+```javascript
+// Return 401 if token expired
+if (error.name === 'TokenExpiredError') {
+  return res.status(401).json({
+    code: 'TOKEN_EXPIRED',
+    message: 'Token has expired. Please refresh.'
+  });
+}
+```
+
+## Token Security Best Practices
+
+### 1. **Use HTTPS**
+Prevents token interception during transmission
+
+```javascript
+// Use https:// in production, not http://
+const apiUrl = process.env.NODE_ENV === 'production'
+  ? 'https://api.example.com'
+  : 'http://localhost:3000';
+```
+
+### 2. **Secure Storage**
+Store refresh token in httpOnly cookie
+
+```javascript
+// Server sets httpOnly cookie
+res.cookie('refreshToken', token, {
+  httpOnly: true,
+  secure: true,  // HTTPS only
+  sameSite: 'Strict'
+});
+```
+
+### 3. **Token Expiration**
+Keep tokens short-lived
+
+```
+Access Token: 1 hour (short-lived)
+Refresh Token: 1 year (longer-lived)
+```
+
+### 4. **Rotate on Refresh**
+New token issued with each refresh
+
+```javascript
+// Old token immediately invalidated
+// Limits damage if token compromised
+await revokeToken(oldRefreshToken);
+```
+
+### 5. **Validate Signature**
+Always verify token signature on backend
+
+```javascript
+// Never trust unverified tokens
+const payload = jwt.verify(token, JWT_SECRET);
+```
+
+### 6. **Monitor for Suspicious Patterns**
+Log and alert on unusual activity
+
+```javascript
+auditLog({
+  userId,
+  action: 'token_refresh',
+  ipAddress,
+  userAgent,
+  timestamp: new Date()
+});
+```
+
+## Token Revocation
+
+### Manual Revocation (Logout)
+
+```javascript
+// When user logs out
+POST /api/v1/auth/logout
+
+// Refresh token is revoked
+// Access token still valid until expiry
+```
+
+### Bulk Revocation (Password Change)
+
+```javascript
+// When user changes password
+await revokeAllTokens(userId);
+
+// All refresh tokens are revoked
+// User must login again
+```
+
+## Token Claims
+
+### Standard Claims
+
+| Claim | Meaning | Example |
+|-------|---------|---------|
+| `iss` | Issuer | "authx" |
+| `sub` | Subject | "507f1f77bcf86cd799439011" |
+| `aud` | Audience | "web-app" |
+| `iat` | Issued at | 1632922800 |
+| `exp` | Expiration | 1632926400 |
+| `nbf` | Not before | 1632922800 |
+
+### Custom Claims
+
+```json
+{
+  "userId": "507f1f77bcf86cd799439011",
+  "email": "user@example.com",
+  "role": "user",
+  "iat": 1632922800,
+  "exp": 1632926400
+}
+```
+
+## Troubleshooting
+
+### "Token Expired"
+```javascript
+// Solution: Refresh token
+const newToken = await refreshAccessToken();
+```
+
+### "Invalid Token"
+```javascript
+// Solutions:
+// 1. Check token hasn't been modified
+// 2. Verify JWT secret is correct
+// 3. Check token format is valid
+```
+
+### "No Token Provided"
+```javascript
+// Add token to header
+fetch(url, {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+---
+
+**Next:**
+- [Authentication](./authentication) - Understand auth flow
+- [Security](../security/token-security) - Token security best practices
+- [Refresh Token API](../api-reference/auth/refresh-token) - API reference

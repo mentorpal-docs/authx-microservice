@@ -1,0 +1,333 @@
+# Running the Server
+
+How to start AuthX in different modes.
+
+## Quick Start
+
+```bash
+# Development (with auto-reload)
+npm run dev
+
+# Production (with clustering)
+npm run start
+
+# Production (with PM2)
+npm start
+
+# Custom port
+PORT=3001 npm run dev
+```
+
+## Development Mode
+
+Ideal for development with hot reload:
+
+```bash
+npm run dev
+```
+
+**Features:**
+- ✅ Auto-reload on file changes
+- ✅ Verbose logging
+- ✅ Source maps for debugging
+- ✅ Live stack traces
+- ✅ Faster startup
+
+**Output:**
+```
+⚡ [nodemon] starting `node src/server.js`
+🚀 Server is running on http://localhost:3000
+📦 Environment: development
+🗄️  Database connected: authx
+📨 Email service ready
+```
+
+## Production Mode
+
+Optimized for performance:
+
+```bash
+npm run build
+npm start
+```
+
+Or directly:
+
+```bash
+NODE_ENV=production npm start
+```
+
+**Features:**
+- ✅ Process clustering
+- ✅ Memory optimization
+- ✅ Error recovery
+- ✅ Graceful shutdown
+- ✅ Production logging
+
+## PM2 Production Manager
+
+For managing processes in production:
+
+```bash
+# Start with PM2
+pm2 start ecosystem.config.js
+
+# View running processes
+pm2 list
+
+# Monitor processes
+pm2 monit
+
+# View logs
+pm2 logs authx
+
+# Restart processes
+pm2 restart authx
+
+# Stop processes
+pm2 stop authx
+
+# Delete processes
+pm2 delete authx
+```
+
+## Docker Container
+
+```bash
+# Build image
+docker build -t authx .
+
+# Run container
+docker run -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e MONGODB_URI=mongodb://host.docker.internal:27017/authx \
+  authx
+
+# Or use docker-compose
+docker-compose up -d
+```
+
+## Environment Variables
+
+Set via:
+
+**Method 1: .env file**
+```bash
+NODE_ENV=development
+PORT=3000
+MONGODB_URI=mongodb://localhost:27017/authx
+```
+
+**Method 2: Environment**
+```bash
+export NODE_ENV=production
+export PORT=8080
+npm start
+```
+
+**Method 3: Command line**
+```bash
+NODE_ENV=production PORT=8080 npm start
+```
+
+## Health Checks
+
+Check if server is running:
+
+```bash
+# Health check endpoint
+curl http://localhost:3000/health
+
+# Expected response:
+# {"status":"ok","timestamp":"2025-11-23T10:30:00Z"}
+```
+
+## Viewing Logs
+
+### Real-time logs
+
+```bash
+# All logs
+npm run logs
+
+# Or directly
+tail -f logs/combined.log
+```
+
+### Error logs only
+
+```bash
+tail -f logs/error.log
+```
+
+### Recent logs
+
+```bash
+tail -n 100 logs/combined.log
+```
+
+### Filter logs
+
+```bash
+# Errors only
+grep ERROR logs/combined.log
+
+# Specific user
+grep "userId: 507f" logs/combined.log
+
+# Specific endpoint
+grep "POST /api/v1/auth/login" logs/combined.log
+```
+
+## Performance Tuning
+
+### Increase worker processes
+
+Edit `ecosystem.config.js`:
+
+```javascript
+module.exports = {
+  apps: [{
+    instances: 4,  // Number of worker processes
+    max_memory_restart: '1G',
+    NODE_ENV: 'production'
+  }]
+};
+```
+
+Then restart:
+
+```bash
+pm2 restart ecosystem.config.js
+```
+
+### Memory management
+
+```bash
+# Monitor memory usage
+pm2 monit
+
+# Set memory limit
+pm2 start app.js --max-memory-restart 500M
+```
+
+## Graceful Shutdown
+
+The server handles shutdown gracefully:
+
+1. Stops accepting new connections
+2. Completes existing requests
+3. Closes database connections
+4. Exits cleanly
+
+Triggered by:
+- `SIGTERM` signal
+- `SIGINT` (Ctrl+C)
+- Docker container stop
+
+## Server Startup Checklist
+
+Before server is ready, it:
+
+- [ ] Loads environment variables
+- [ ] Connects to MongoDB
+- [ ] Connects to Redis
+- [ ] Initializes email service
+- [ ] Starts Express server
+- [ ] Listens on configured port
+
+Check logs to verify:
+
+```bash
+tail -f logs/combined.log | grep -E "✓|✅|Error"
+```
+
+## Troubleshooting
+
+### Server won't start
+
+**Check logs:**
+```bash
+tail -f logs/combined.log
+tail -f logs/error.log
+```
+
+**Verify configuration:**
+```bash
+cat .env | grep -E "NODE_ENV|PORT|MONGODB"
+```
+
+**Check dependencies:**
+```bash
+npm list
+```
+
+### Port already in use
+
+```bash
+# Find process
+lsof -ti:3000
+
+# Kill process
+kill -9 <PID>
+
+# Or use different port
+PORT=3001 npm run dev
+```
+
+### Database connection fails
+
+```bash
+# Verify MongoDB is running
+docker-compose ps mongodb
+
+# Test connection
+npm run db:test
+```
+
+### High memory usage
+
+```bash
+# Check memory
+ps aux | grep node
+
+# Restart server
+npm run stop
+npm run dev
+
+# Or with PM2
+pm2 restart authx
+pm2 set authx max_memory_restart 1G
+```
+
+## Running Multiple Instances
+
+### With PM2 clustering
+
+```bash
+pm2 start ecosystem.config.js -i max
+```
+
+Starts one instance per CPU core.
+
+### With Docker Compose
+
+```yaml
+services:
+  authx-1:
+    build: .
+    ports:
+      - "3001:3000"
+  authx-2:
+    build: .
+    ports:
+      - "3002:3000"
+```
+
+Then configure load balancer.
+
+## Next Steps
+
+- [API Testing](../api-reference/auth/signup) - Test endpoints
+- [Deployment](../deployment/overview) - Deploy to production
+- [Monitoring](../best-practices/monitoring) - Monitor in production

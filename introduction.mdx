@@ -1,0 +1,199 @@
+# Welcome to AuthX
+
+Welcome to **AuthX**, a production-ready, enterprise-grade authentication and user management microservice built with Node.js, Express, and MongoDB.
+
+## Overview
+
+AuthX is a comprehensive authentication solution designed to provide:
+
+- 🔐 **Secure Authentication** - JWT-based authentication with refresh token rotation
+- 👥 **User Management** - Complete user profile and preference management
+- 🛡️ **Security First** - Bcrypt password hashing, rate limiting, audit logging
+- 📊 **Scalable Architecture** - Service-oriented design ready for horizontal scaling
+- 🔄 **Token Management** - Secure token generation, validation, and revocation
+- 📧 **Email Integration** - OTP-based password recovery and notifications
+- 🎯 **Role-Based Access** - Built-in RBAC with admin and user roles
+- 🚀 **Multi-Environment** - Development, UAT, and Production configurations
+- 📝 **Comprehensive Logging** - Winston-based logging and audit trails
+
+## Key Features
+
+### Authentication
+- **Signup & Login** - Secure user registration and authentication
+- **Password Management** - Forgot password, reset password, change password flows
+- **Token Management** - Access tokens (1 hour) and refresh tokens (1 year)
+- **OTP Verification** - Email-based OTP for password recovery
+- **Account Security** - Account lockout after 5 failed login attempts
+
+### User Management
+- **Profile Management** - Get, update user profile information
+- **Preferences** - Store and manage user preferences
+- **Account Deactivation** - Secure account deactivation
+- **Admin Search** - Admin-only user search with pagination
+
+### Security
+- **Password Hashing** - bcrypt with 12 rounds (production)
+- **JWT Signing** - HS256 algorithm for token signing
+- **Rate Limiting** - Per-endpoint rate limiting using Redis
+- **Account Lockout** - 5 failed attempts → 30-minute lockout
+- **Audit Logging** - Complete audit trail of all actions
+- **CORS Protection** - Configurable CORS for cross-origin requests
+- **Security Headers** - Helmet.js for HTTP security headers
+
+## Technology Stack
+
+| Layer | Technologies |
+|-------|--------------|
+| **Runtime** | Node.js 18+ |
+| **Framework** | Express.js 4.18+ |
+| **Database** | MongoDB 6+ with Mongoose |
+| **Cache** | Redis 7+ |
+| **Authentication** | JWT (jsonwebtoken), bcrypt |
+| **Validation** | express-validator |
+| **Logging** | Winston |
+| **Security** | Helmet.js, express-rate-limit |
+| **Email** | Nodemailer |
+| **Testing** | Jest |
+| **Deployment** | Docker, PM2, Kubernetes |
+
+## Project Structure
+
+```
+authx/
+├── src/
+│   ├── models/              # Database models
+│   ├── controllers/         # Route handlers
+│   ├── services/            # Business logic
+│   ├── middleware/          # Express middleware
+│   ├── utils/               # Utility functions
+│   ├── config/              # Configuration files
+│   ├── routes/              # Route definitions
+│   ├── app.js               # Express app setup
+│   └── server.js            # Server initialization
+├── tests/                   # Test files
+├── docs/                    # Documentation (Mintlify)
+├── .env.development         # Development config
+├── .env.uat                 # UAT config
+├── .env.production          # Production config
+├── package.json             # Dependencies
+├── Dockerfile               # Docker configuration
+├── docker-compose.yml       # Multi-service setup
+├── ecosystem.config.js      # PM2 configuration
+└── README.md                # Project overview
+```
+
+## Quick Start
+
+Get up and running in 5 minutes:
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd authx
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment
+cp .env.development .env
+
+# 4. Start with Docker
+docker-compose up -d
+
+# 5. Run the server
+npm run dev
+```
+
+Your API will be available at `http://localhost:3000/api/v1`
+
+## API Endpoints Overview
+
+### Authentication
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/v1/auth/signup` | User registration |
+| POST | `/api/v1/auth/login` | User login |
+| POST | `/api/v1/auth/logout` | User logout |
+| POST | `/api/v1/auth/refresh` | Refresh access token |
+| POST | `/api/v1/auth/forgot-password` | Initiate password reset |
+| POST | `/api/v1/auth/reset-password` | Reset password with OTP |
+| PUT | `/api/v1/auth/change-password` | Change password (authenticated) |
+| GET | `/api/v1/auth/verify-token` | Verify token validity |
+
+### User Management
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/users/profile` | Get user profile |
+| PUT | `/api/v1/users/profile` | Update user profile |
+| GET | `/api/v1/users/preferences` | Get user preferences |
+| PUT | `/api/v1/users/preferences` | Update user preferences |
+| DELETE | `/api/v1/users/account` | Deactivate account |
+| GET | `/api/v1/users/search` | Search users (admin only) |
+
+## Environment Support
+
+### Development
+- Local MongoDB & Redis
+- Hot reload with nodemon
+- Verbose logging
+- Rate limiting disabled
+
+### UAT (User Acceptance Testing)
+- MongoDB Atlas (UAT cluster)
+- Redis Enterprise (UAT)
+- Production-like configuration
+- Rate limiting enabled
+- Email notifications
+
+### Production
+- MongoDB Atlas (Production cluster)
+- Redis Enterprise (Production)
+- Optimized performance
+- Security hardening
+- Load balancing
+- Auto-scaling
+
+## Deployment Options
+
+- **Docker** - Containerized deployment with docker-compose
+- **PM2** - Process manager for production scaling
+- **Kubernetes** - Cloud-native orchestration
+- **Heroku** - Platform-as-a-service deployment
+
+## What's Included
+
+✅ Complete source code (3000+ lines)  
+✅ Production-ready architecture  
+✅ Three environment configurations  
+✅ Docker & Docker Compose setup  
+✅ PM2 process management  
+✅ Unit & integration tests  
+✅ Comprehensive documentation  
+✅ API reference with examples  
+✅ Security best practices  
+✅ Deployment guides  
+
+## Next Steps
+
+1. **[Quick Start](./quickstart)** - Get the service running in 5 minutes
+2. **[Architecture](./architecture)** - Understand the system design
+3. **[API Reference](./api-reference/auth/signup)** - Explore all endpoints
+4. **[Deployment](./deployment/overview)** - Deploy to your environment
+5. **[Security](./security/overview)** - Learn security best practices
+
+## Support
+
+For issues, questions, or contributions:
+
+- 📖 Check the [FAQ](./troubleshooting/faq)
+- 🐛 Report bugs on GitHub
+- 💬 Join our community discussions
+- 📧 Contact support@example.com
+
+## License
+
+MIT License - See LICENSE file for details
+
+---
+
+**Ready to get started?** Head to the [Quick Start](./quickstart) guide! 🚀

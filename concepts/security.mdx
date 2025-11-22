@@ -1,0 +1,334 @@
+# Security Overview
+
+Comprehensive security practices in AuthX.
+
+## Security Principles
+
+### Defense in Depth
+
+Multiple layers of security ensure that if one is compromised, others remain:
+
+```
+┌─────────────────────────────────┐
+│     Network Layer               │ HTTPS, TLS, DDoS protection
+├─────────────────────────────────┤
+│     Application Layer           │ Input validation, rate limiting
+├─────────────────────────────────┤
+│     Authentication Layer        │ Password hashing, JWT signing
+├─────────────────────────────────┤
+│     Authorization Layer         │ RBAC, resource ownership checks
+├─────────────────────────────────┤
+│     Data Layer                  │ Encryption at rest, field encryption
+├─────────────────────────────────┤
+│     Audit Layer                 │ Logging, audit trails
+└─────────────────────────────────┘
+```
+
+### Security Mindset
+
+- **Assume breach** - Design as if compromised
+- **Least privilege** - Grant minimum necessary permissions
+- **Defense in depth** - Multiple overlapping protections
+- **Fail securely** - Errors don't leak sensitive info
+- **Know your assets** - Understand what you're protecting
+
+## Core Security Features
+
+### Password Security
+
+- **Hashing:** bcrypt with 12 rounds (production)
+- **Salting:** Automatic random salt per password
+- **Requirements:** Min 8 chars, uppercase, lowercase, number, special char
+- **Non-reversible:** Cannot be decrypted
+
+```javascript
+// Password hashing
+const hashed = await bcrypt.hash(password, 12);
+
+// Password verification
+const matches = await bcrypt.compare(password, hashed);
+```
+
+### JWT Security
+
+- **Algorithm:** HS256 (HMAC-SHA256)
+- **Signing:** Cryptographic signature prevents tampering
+- **Expiry:** 1-hour access tokens
+- **Rotation:** Refresh tokens rotated on each use
+
+```javascript
+// Token generation
+const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+
+// Token verification
+const payload = jwt.verify(token, JWT_SECRET);
+```
+
+### Rate Limiting
+
+Prevents brute force attacks:
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| Signup | 3 | 1 hour |
+| Login | 5 | 15 minutes |
+| Password Reset | 3 | 1 hour |
+| General API | 100 | 1 minute |
+
+```javascript
+// Rate limiting middleware
+limiter.windowMs = 15 * 60 * 1000;  // 15 minutes
+limiter.max = 5;                     // 5 requests per window
+```
+
+### Account Lockout
+
+Protects against account takeover:
+
+```
+5 failed login attempts
+        ↓
+Account locked for 30 minutes
+        ↓
+No login allowed
+        ↓
+Auto-unlock after 30 minutes
+```
+
+### Input Validation
+
+Prevents injection attacks:
+
+```javascript
+// Email validation
+email: { 
+  isEmail: { errorMessage: 'Invalid email' }
+}
+
+// Password validation  
+password: {
+  isLength: { min: 8 },
+  matches: /[A-Z]/,  // Uppercase
+  matches: /[0-9]/   // Number
+}
+
+// XSS prevention
+sanitize().trim().escape()
+```
+
+### SQL/NoSQL Injection Prevention
+
+```javascript
+// BAD - Vulnerable
+User.find({ email: userInput });
+
+// GOOD - Parameterized
+User.findOne({ email: sanitizedInput });
+
+// GOOD - Schema validation
+userSchema.path('email').validate(isEmail);
+```
+
+### CORS Protection
+
+Prevents cross-origin attacks:
+
+```javascript
+// Whitelist allowed origins
+cors({
+  origin: ['https://app.example.com', 'https://admin.example.com'],
+  credentials: true
+})
+```
+
+### CSRF Protection
+
+Prevents cross-site request forgery:
+
+```javascript
+// Use SameSite cookie attribute
+res.cookie('token', token, {
+  sameSite: 'Strict'  // Only same-site requests
+});
+```
+
+### Security Headers
+
+HTTP security headers via Helmet.js:
+
+```javascript
+// Content Security Policy
+helmet.contentSecurityPolicy({
+  directives: { defaultSrc: ["'self'"] }
+});
+
+// X-Frame-Options prevents clickjacking
+helmet.frameguard({ action: 'deny' });
+
+// X-Content-Type-Options prevents MIME sniffing
+helmet.noSniff();
+
+// X-XSS-Protection
+helmet.xssFilter();
+```
+
+### Audit Logging
+
+Every action is logged:
+
+```javascript
+{
+  userId: "507f1f77bcf86cd799439011",
+  action: "login",
+  status: "success",
+  ipAddress: "192.168.1.1",
+  userAgent: "Mozilla/5.0...",
+  timestamp: "2025-11-23T10:30:00Z",
+  metadata: { deviceInfo: {...} }
+}
+```
+
+## OWASP Top 10 Protection
+
+### 1. Injection
+- **Protection:** Input validation, parameterized queries, schema validation
+- **Implementation:** express-validator, Mongoose schema
+
+### 2. Broken Authentication
+- **Protection:** Strong password requirements, account lockout, JWT signing
+- **Implementation:** bcrypt, JWT with expiry, rate limiting
+
+### 3. Sensitive Data Exposure
+- **Protection:** HTTPS/TLS, encryption at rest, field encryption
+- **Implementation:** SSL certificates, MongoDB encryption
+
+### 4. XML External Entities (XXE)
+- **Protection:** Disable XML parsing, sanitize input
+- **Implementation:** JSON-only APIs
+
+### 5. Broken Access Control
+- **Protection:** RBAC, resource ownership checks, authorization middleware
+- **Implementation:** authenticate + authorize middleware
+
+### 6. Security Misconfiguration
+- **Protection:** Security headers, environment separation, secrets management
+- **Implementation:** Helmet.js, .env files, vault
+
+### 7. XSS (Cross-Site Scripting)
+- **Protection:** Input sanitization, output encoding, CSP headers
+- **Implementation:** DOMPurify, Helmet CSP
+
+### 8. Insecure Deserialization
+- **Protection:** Type validation, safe deserialization
+- **Implementation:** Mongoose schema validation
+
+### 9. Using Components with Known Vulnerabilities
+- **Protection:** Dependency scanning, regular updates
+- **Implementation:** npm audit, dependabot
+
+### 10. Insufficient Logging & Monitoring
+- **Protection:** Comprehensive logging, alerting
+- **Implementation:** Winston logger, audit logs
+
+## Security Checklist
+
+### Before Deployment
+
+- [ ] Use HTTPS/TLS in production
+- [ ] Set strong JWT_SECRET (32+ characters)
+- [ ] Configure CORS properly
+- [ ] Enable rate limiting
+- [ ] Set up audit logging
+- [ ] Configure email service
+- [ ] Set up monitoring/alerting
+- [ ] Database backups enabled
+- [ ] SSL certificate installed
+- [ ] Secrets in vault (not in code)
+- [ ] Security headers configured
+- [ ] Input validation enabled
+- [ ] Password hashing working
+- [ ] Token expiry set
+- [ ] Account lockout enabled
+- [ ] Dependencies updated
+- [ ] Security scanning completed
+- [ ] Code review done
+- [ ] Load testing done
+- [ ] Penetration test done
+
+### Ongoing Security
+
+- [ ] Monitor audit logs daily
+- [ ] Review failed login attempts
+- [ ] Check for unusual patterns
+- [ ] Update dependencies monthly
+- [ ] Rotate secrets quarterly
+- [ ] Run security scans monthly
+- [ ] Review access logs
+- [ ] Check for brute force attempts
+- [ ] Monitor system performance
+- [ ] Backup data daily
+
+## Environment-Specific Security
+
+### Development
+
+```env
+NODE_ENV=development
+RATE_LIMIT_ENABLED=false  # Disabled for testing
+CORS_ORIGIN=http://localhost:3000
+LOG_LEVEL=debug
+```
+
+### UAT
+
+```env
+NODE_ENV=uat
+RATE_LIMIT_ENABLED=true
+CORS_ORIGIN=https://uat.example.com
+LOG_LEVEL=info
+```
+
+### Production
+
+```env
+NODE_ENV=production
+RATE_LIMIT_ENABLED=true
+CORS_ORIGIN=https://app.example.com
+LOG_LEVEL=warn
+BCRYPT_ROUNDS=12
+JWT_EXPIRY=1h
+```
+
+## Incident Response
+
+### Suspected Compromise
+
+1. **Immediate:**
+   - Revoke all tokens
+   - Force password reset
+   - Review audit logs
+
+2. **Investigation:**
+   - Analyze logs for unauthorized access
+   - Check for data exfiltration
+   - Identify attack vector
+
+3. **Response:**
+   - Patch vulnerability
+   - Reset compromised tokens
+   - Notify affected users
+   - Post-mortem analysis
+
+## Security Resources
+
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [Node.js Security Checklist](https://github.com/goldbergyoni/nodebestpractices)
+- [NPM Security Advisories](https://www.npmjs.com/advisories)
+- [Helmet.js Documentation](https://helmetjs.github.io/)
+
+---
+
+**Next:**
+- [Password Security](./password-security) - Detailed password practices
+- [Rate Limiting](./rate-limiting) - Brute force protection
+- [Audit Logging](./audit-logging) - Track all actions

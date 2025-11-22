@@ -1,0 +1,82 @@
+# Verify Token
+
+Check if a token is valid.
+
+## Endpoint
+
+```
+GET /api/v1/auth/verify-token
+```
+
+## Description
+
+Verifies if the provided access token is valid and returns token information.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer {accessToken}`
+</ParamField>
+
+## Response
+
+### Valid Token (200)
+
+```json
+{
+  "success": true,
+  "message": "Token is valid",
+  "data": {
+    "valid": true,
+    "userId": "507f1f77bcf86cd799439011",
+    "expiresAt": "2025-11-23T11:30:00.000Z"
+  }
+}
+```
+
+### Invalid Token (401)
+
+```json
+{
+  "success": false,
+  "message": "Invalid or expired token",
+  "code": "INVALID_TOKEN"
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="cURL">
+    ```bash
+    curl http://localhost:3000/api/v1/auth/verify-token \
+      -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+    ```
+  </Tab>
+
+  <Tab title="JavaScript">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+
+    const response = await fetch(
+      'http://localhost:3000/api/v1/auth/verify-token',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const data = await response.json();
+    if (!data.data.valid) {
+      // Token is invalid, refresh or redirect to login
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Use Cases
+
+- Verify token on app startup
+- Check token validity before API call
+- Determine if refresh is needed

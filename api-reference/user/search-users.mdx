@@ -1,0 +1,117 @@
+# Search Users
+
+Search for users in the system (admin only).
+
+## Endpoint
+
+```
+GET /api/v1/users/search
+```
+
+## Description
+
+Search and list users with pagination. Only accessible to admin users.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer {accessToken}` (admin role required)
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="q" type="string" optional>
+  Search query (searches email, firstName, lastName)
+</ParamField>
+
+<ParamField query="page" type="number" optional>
+  Page number for pagination (default: 1)
+</ParamField>
+
+<ParamField query="limit" type="number" optional>
+  Results per page (default: 10, max: 100)
+</ParamField>
+
+<ParamField query="role" type="string" optional>
+  Filter by role: "user" or "admin"
+</ParamField>
+
+<ParamField query="isActive" type="boolean" optional>
+  Filter by active status
+</ParamField>
+
+## Response
+
+### Success (200)
+
+```json
+{
+  "success": true,
+  "message": "Users retrieved successfully",
+  "data": {
+    "users": [
+      {
+        "_id": "507f1f77bcf86cd799439011",
+        "email": "john.doe@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "role": "user",
+        "isActive": true,
+        "createdAt": "2025-11-23T10:30:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 42,
+      "pages": 5
+    }
+  }
+}
+```
+
+### Unauthorized (403)
+
+```json
+{
+  "success": false,
+  "message": "Only admins can search users",
+  "code": "FORBIDDEN"
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="cURL">
+    ```bash
+    curl "http://localhost:3000/api/v1/users/search?q=john&page=1&limit=10" \
+      -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+    ```
+  </Tab>
+
+  <Tab title="JavaScript">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+
+    const response = await fetch(
+      'http://localhost:3000/api/v1/users/search?q=john&page=1&limit=10',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const data = await response.json();
+    const { users, pagination } = data.data;
+    ```
+  </Tab>
+</Tabs>
+
+## Security Notes
+
+- Admin-only endpoint
+- Results are paginated
+- Sensitive data excluded from results
+- Search patterns are logged

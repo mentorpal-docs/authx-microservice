@@ -1,0 +1,241 @@
+# Development Setup
+
+Set up your local development environment.
+
+## Prerequisites
+
+Ensure you have:
+- Node.js 18+
+- npm 8+
+- Git
+- Text editor (VS Code recommended)
+
+## Setting Up Development Environment
+
+### 1. Clone Repository
+
+```bash
+git clone <repository-url>
+cd authx
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure Environment
+
+```bash
+cp .env.development .env
+```
+
+### 4. Start Services
+
+```bash
+# Using Docker (recommended)
+docker-compose up -d
+
+# Or install locally
+# See Database Setup guide
+```
+
+### 5. Run Development Server
+
+```bash
+npm run dev
+```
+
+Server runs at `http://localhost:3000`
+
+## Development Workflow
+
+### Making Changes
+
+```bash
+# File changes automatically reload with nodemon
+# Edit src files, server updates automatically
+```
+
+### Running Tests
+
+```bash
+npm test                           # Run all tests
+npm test -- --watch              # Watch mode
+npm test -- tests/unit/           # Run specific test file
+npm test -- --coverage            # Generate coverage report
+```
+
+### Linting Code
+
+```bash
+npm run lint                       # Check code style
+npm run lint:fix                   # Auto-fix issues
+npm run format                     # Format code
+```
+
+## Debugging
+
+### Using VS Code Debugger
+
+```json
+// .vscode/launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Program",
+      "program": "${workspaceFolder}/src/server.js"
+    }
+  ]
+}
+```
+
+### Using Chrome DevTools
+
+```bash
+node --inspect=9229 src/server.js
+# Open chrome://inspect in Chrome
+```
+
+### Using node-debug
+
+```bash
+npm install -g node-debug
+node-debug src/server.js
+```
+
+## Useful Commands
+
+```bash
+npm run dev              # Start development server
+npm run build            # Build for production
+npm test                 # Run tests
+npm run lint             # Check code style
+npm run format           # Format code
+npm run db:test          # Test database connection
+npm run redis:test       # Test Redis connection
+npm run logs             # View logs
+```
+
+## VS Code Extensions
+
+Recommended extensions:
+
+- ES7+ React/Redux/React-Native snippets
+- Prettier - Code formatter
+- ESLint
+- MongoDB for VS Code
+- REST Client or Thunder Client
+- Docker
+
+## Project Structure
+
+```
+authx/
+├── src/
+│   ├── models/          # Database models
+│   ├── controllers/     # Route handlers
+│   ├── services/        # Business logic
+│   ├── middleware/      # Express middleware
+│   ├── utils/           # Utility functions
+│   ├── config/          # Configuration
+│   ├── routes/          # Route definitions
+│   ├── app.js           # Express app
+│   └── server.js        # Server entry
+├── tests/               # Test files
+├── docs/                # Documentation
+├── logs/                # Log files
+├── package.json         # Dependencies
+├── .env.development     # Dev config
+└── docker-compose.yml   # Services
+```
+
+## Best Practices
+
+1. **Follow code style** - Run `npm run lint:fix`
+2. **Write tests** - Test coverage required
+3. **Commit often** - Small, focused commits
+4. **Document changes** - Update docs as needed
+5. **Review before pushing** - Code review checklist
+
+## Common Development Tasks
+
+### Adding New Endpoint
+
+1. Create controller method
+2. Add service method
+3. Create route handler
+4. Add middleware/validation
+5. Write tests
+6. Update documentation
+
+### Making Database Changes
+
+1. Update model schema
+2. Create indexes if needed
+3. Test with sample data
+4. Update services that use model
+5. Write migration if needed
+
+### Updating Dependencies
+
+```bash
+# Check for updates
+npm outdated
+
+# Update specific package
+npm update package-name
+
+# Update all packages
+npm update
+
+# Check for security issues
+npm audit
+npm audit fix
+```
+
+## Troubleshooting Development
+
+### Server won't start
+
+```bash
+# Check logs
+tail -f logs/combined.log
+
+# Verify .env file
+cat .env | grep MONGODB
+
+# Check port is free
+lsof -ti:3000
+```
+
+### Changes not reflecting
+
+```bash
+# Restart development server
+# (Should auto-reload, if not: Ctrl+C then `npm run dev`)
+
+# Clear Node cache
+rm -rf node_modules/.cache
+```
+
+### Database issues
+
+```bash
+# Reset development database
+npm run db:reset
+
+# Check MongoDB is running
+docker-compose ps mongodb
+```
+
+---
+
+**Next:**
+- [Running Server](./running-server) - Start the server
+- [Testing](./testing) - Write and run tests
+- [Debugging](./debugging) - Debug your code

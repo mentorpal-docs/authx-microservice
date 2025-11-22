@@ -1,0 +1,291 @@
+# Authorization Overview
+
+Understanding access control in AuthX.
+
+## What is Authorization?
+
+Authorization determines **what authenticated users can do** - which resources they can access and which operations they can perform.
+
+AuthX implements **Role-Based Access Control (RBAC)**.
+
+## Roles
+
+### User Role
+
+The default role for all new accounts.
+
+**Permissions:**
+- Access own profile
+- Update own profile
+- Manage own preferences
+- Change own password
+- View own audit logs
+
+**Cannot:**
+- Access other users' data
+- Search users
+- Access admin endpoints
+- Modify other users
+
+### Admin Role
+
+The administrative role with elevated permissions.
+
+**Permissions:**
+- All user permissions
+- Search and view all users
+- Access admin endpoints
+- Manage system settings
+- View all audit logs
+- Manage user roles (if implemented)
+
+**Cannot:**
+- Modify another user's password directly
+- Delete user accounts (optional)
+- Access database directly
+
+## Access Control Patterns
+
+### Endpoint Protection
+
+Each endpoint is protected by middleware:
+
+```javascript
+// Public endpoints (no auth required)
+POST /api/v1/auth/signup
+POST /api/v1/auth/login
+
+// Protected endpoints (auth required)
+GET /api/v1/users/profile         // Any authenticated user
+PUT /api/v1/users/profile         // User can edit own profile
+
+// Admin-only endpoints
+GET /api/v1/users/search          // Admin only
+```
+
+### Middleware Implementation
+
+```javascript
+// Authenticate (required)
+router.get('/profile', authenticate, getProfile);
+
+// Authorize (role-based)
+router.get('/search', authenticate, authorize('admin'), searchUsers);
+```
+
+## Permission Hierarchy
+
+```
+Public Endpoints (no auth)
+        ↓
+Authenticated Users (any role)
+        ↓
+Admin Users (admin role only)
+```
+
+## Resource-Level Authorization
+
+Users can only access their own resources:
+
+```javascript
+// Get user's own profile - ALLOWED
+GET /api/v1/users/profile
+
+// View user's own preferences - ALLOWED
+GET /api/v1/users/preferences
+
+// Update own profile - ALLOWED
+PUT /api/v1/users/profile
+
+// Access another user's profile - DENIED
+GET /api/v1/users/507f1f77bcf86cd799439011
+
+// Search all users (admin) - ALLOWED (if admin)
+GET /api/v1/users/search
+```
+
+## Implementation
+
+### Checking User Role
+
+```javascript
+if (user.role !== 'admin') {
+  throw new ForbiddenError('Only admins can access this');
+}
+```
+
+### Checking Resource Ownership
+
+```javascript
+if (userId !== loggedInUser._id) {
+  throw new ForbiddenError('Can only access your own resources');
+}
+```
+
+### Authorization Middleware
+
+```javascript
+const authorize = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!allowedRoles.includes(req.user.role)) {
+      throw new ForbiddenError('Insufficient permissions');
+    }
+    next();
+  };
+};
+```
+
+## Common Authorization Patterns
+
+### Pattern 1: Role-Based
+
+```javascript
+// Only admins can search users
+router.get('/users/search', 
+  authenticate,
+  authorize('admin'),
+  searchUsers
+);
+```
+
+### Pattern 2: Resource Ownership
+
+```javascript
+// Users can only access their own profile
+router.get('/users/profile',
+  authenticate,
+  checkResourceOwnership('profile'),
+  getProfile
+);
+```
+
+### Pattern 3: Custom Logic
+
+```javascript
+// Users can update their profile, admins can update any
+router.put('/users/:userId/profile',
+  authenticate,
+  (req, res, next) => {
+    if (req.user.role !== 'admin' && 
+        req.user._id !== req.params.userId) {
+      throw new ForbiddenError('Unauthorized');
+    }
+    next();
+  },
+  updateProfile
+);
+```
+
+## Default Permissions Matrix
+
+| Endpoint | Public | User | Admin |
+|----------|--------|------|-------|
+| POST /signup | ✓ | - | - |
+| POST /login | ✓ | - | - |
+| POST /logout | - | ✓ | ✓ |
+| GET /profile | - | ✓ | ✓ |
+| PUT /profile | - | own | all |
+| GET /preferences | - | ✓ | ✓ |
+| PUT /preferences | - | ✓ | ✓ |
+| DELETE /account | - | own | - |
+| GET /users/search | - | - | ✓ |
+
+## Best Practices
+
+### 1. Always Authenticate First
+```javascript
+// BAD
+if (user.role === 'admin') { ... }
+
+// GOOD
+if (isAuthenticated && user.role === 'admin') { ... }
+```
+
+### 2. Use Middleware Consistently
+```javascript
+router.put('/users/profile', 
+  authenticate,        // First check auth
+  authorize('admin'),  // Then check role
+  updateProfile
+);
+```
+
+### 3. Check Resource Ownership
+```javascript
+// Always verify user accessing their own resource
+const owner = await findResourceOwner(resourceId);
+if (owner._id !== loggedInUser._id && loggedInUser.role !== 'admin') {
+  throw new ForbiddenError();
+}
+```
+
+### 4. Audit Authorization Failures
+```javascript
+// Log failed authorization attempts
+auditLog({
+  userId: req.user._id,
+  action: 'authorization_failed',
+  endpoint: req.path,
+  reason: 'insufficient_permissions'
+});
+```
+
+### 5. Use Specific Error Messages
+```javascript
+// Clear error messages help debugging
+if (!authenticated) {
+  throw new AuthenticationError('Authentication required');
+}
+
+if (!authorized) {
+  throw new AuthorizationError('Admin access required');
+}
+```
+
+## Implementing Custom Roles
+
+To add more roles (e.g., Moderator, Manager):
+
+```javascript
+const ROLES = {
+  ADMIN: 'admin',
+  MODERATOR: 'moderator',
+  USER: 'user'
+};
+
+// Update User model
+userSchema.add({
+  role: {
+    type: String,
+    enum: Object.values(ROLES),
+    default: ROLES.USER
+  }
+});
+
+// Use in authorization
+router.delete('/users/:id',
+  authenticate,
+  authorize('admin'),
+  deleteUser
+);
+```
+
+## Security Checklist
+
+- [ ] All sensitive endpoints require authentication
+- [ ] Admin endpoints require admin role
+- [ ] Users cannot access other users' data
+- [ ] Resource ownership is verified
+- [ ] Failed authorization is logged
+- [ ] Error messages don't leak information
+- [ ] Middleware is applied consistently
+- [ ] Roles are clearly defined
+- [ ] Permission matrix is documented
+- [ ] Regular access reviews are performed
+
+---
+
+**Next:**
+- [Authentication](./authentication) - Learn about authentication
+- [Security](../security/overview) - Best practices for security
+- [API Reference](../api-reference/auth/login) - Try the APIs

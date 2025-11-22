@@ -1,0 +1,491 @@
+# Common Issues
+
+Solutions to the most common problems encountered when using AuthX.
+
+## Installation Issues
+
+### Issue: npm install fails
+
+**Symptoms:**
+```
+npm ERR! code ERESOLVE
+npm ERR! ERESOLVE unable to resolve dependency tree
+```
+
+**Solutions:**
+
+```bash
+# Option 1: Clear cache and retry
+npm cache clean --force
+npm install
+
+# Option 2: Use legacy peer deps
+npm install --legacy-peer-deps
+
+# Option 3: Remove node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### Issue: Port 3000 already in use
+
+**Symptoms:**
+```
+Error: listen EADDRINUSE: address already in use :::3000
+```
+
+**Solutions:**
+
+```bash
+# Find process using port 3000
+lsof -ti:3000
+
+# Kill the process
+kill -9 <PID>
+
+# Or use different port
+PORT=3001 npm run dev
+
+# Or update .env
+echo "PORT=3001" >> .env
+```
+
+## Database Connection Issues
+
+### Issue: MongoDB connection timeout
+
+**Symptoms:**
+```
+MongoError: connect ECONNREFUSED 127.0.0.1:27017
+```
+
+**Solutions:**
+
+```bash
+# Check if MongoDB is running
+docker-compose ps
+
+# Start MongoDB if using Docker
+docker-compose up -d mongodb
+
+# Or check local MongoDB
+mongosh   # Should connect
+
+# Verify connection string in .env
+MONGODB_URI=mongodb://localhost:27017/authx
+```
+
+### Issue: MongoDB Atlas connection fails
+
+**Symptoms:**
+```
+Error: getaddrinfo ENOTFOUND cluster.mongodb.net
+```
+
+**Solutions:**
+
+```bash
+# 1. Check connection string format
+# Should be: mongodb+srv://user:password@cluster.mongodb.net/authx?retryWrites=true
+
+# 2. Verify credentials are correct
+# 3. Check IP whitelist in MongoDB Atlas (allow all: 0.0.0.0/0)
+# 4. Ensure database user has correct permissions
+
+# Test connection
+mongosh "mongodb+srv://user:password@cluster.mongodb.net/authx"
+```
+
+### Issue: Redis connection refused
+
+**Symptoms:**
+```
+Error: connect ECONNREFUSED 127.0.0.1:6379
+```
+
+**Solutions:**
+
+```bash
+# Check if Redis is running
+docker-compose ps
+
+# Start Redis if using Docker
+docker-compose up -d redis
+
+# Or check local Redis
+redis-cli ping   # Should return PONG
+
+# Verify Redis URL in .env
+REDIS_URL=redis://localhost:6379
+```
+
+## Authentication Issues
+
+### Issue: "Invalid email or password" on login
+
+**Causes:**
+- Email doesn't exist in database
+- Password is incorrect
+- User account is deactivated
+
+**Solutions:**
+
+```bash
+# Check if user exists
+mongosh
+use authx
+db.users.findOne({ email: 'user@example.com' })
+
+# If user doesn't exist, create via signup endpoint
+# If exists, verify password is correct
+
+# Check if account is active
+db.users.findOne({ email: 'user@example.com' }, { isActive: 1 })
+```
+
+### Issue: "Account locked" error
+
+**Cause:** 5 failed login attempts within 30 minutes
+
+**Solution:** Wait 30 minutes for automatic unlock
+
+Or manually unlock:
+
+```bash
+mongosh
+use authx
+db.users.updateOne(
+  { email: 'user@example.com' },
+  { $set: { failedLoginAttempts: 0, accountLockedUntil: null } }
+)
+```
+
+### Issue: "Invalid or expired token"
+
+**Causes:**
+- Token has expired (1 hour lifetime)
+- Token was modified
+- JWT_SECRET changed
+- Server restarted (if secret changed)
+
+**Solutions:**
+
+```bash
+# Get new token by logging in again
+POST /api/v1/auth/login
+
+# Or refresh expired token
+POST /api/v1/auth/refresh
+```
+
+### Issue: "No authentication token provided"
+
+**Cause:** Missing Authorization header
+
+**Solution:**
+
+```bash
+# Add Authorization header with token
+curl http://localhost:3000/api/v1/users/profile \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+
+# JavaScript
+fetch('/api/v1/users/profile', {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`
+  }
+})
+```
+
+## API Issues
+
+### Issue: 400 Bad Request validation error
+
+**Symptoms:**
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [...]
+}
+```
+
+**Solutions:**
+
+1. Check error message for specific field
+2. Ensure all required fields are provided
+3. Validate field format (email, password requirements)
+4. Check data types (string vs number)
+
+Example fix:
+
+```bash
+# BAD - Missing required field
+{ "email": "user@example.com" }
+
+# GOOD - All required fields
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+### Issue: 429 Too Many Requests (Rate Limited)
+
+**Symptoms:**
+```json
+{
+  "success": false,
+  "message": "Too many requests. Please try again later.",
+  "retryAfter": 900
+}
+```
+
+**Solutions:**
+
+- Wait before retrying (see `retryAfter` value in seconds)
+- Implement exponential backoff in client
+- Whitelist IP address in production
+
+```javascript
+// Implement retry with backoff
+async function retryWithBackoff(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error.status === 429 && i < maxRetries - 1) {
+        const delayMs = Math.pow(2, i) * 1000;
+        await sleep(delayMs);
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+```
+
+### Issue: 500 Internal Server Error
+
+**Symptoms:**
+```json
+{
+  "success": false,
+  "message": "Internal server error"
+}
+```
+
+**Solutions:**
+
+1. Check server logs:
+   ```bash
+   tail -f logs/error.log
+   ```
+
+2. Check database connection
+3. Verify all environment variables
+4. Check disk space
+5. Restart server
+
+```bash
+npm run dev
+```
+
+## Email Issues
+
+### Issue: Email not sending
+
+**Symptoms:**
+- Forgot password OTP doesn't arrive
+- No email notifications received
+
+**Solutions:**
+
+1. Check email configuration in `.env`:
+   ```env
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASSWORD=app-password-not-regular-password
+   ```
+
+2. For Gmail, use App Password (not regular password):
+   - Enable 2FA
+   - Generate App Password
+   - Use in `EMAIL_PASSWORD`
+
+3. Check email server logs:
+   ```bash
+   tail -f logs/combined.log | grep email
+   ```
+
+4. Test SMTP connection:
+   ```bash
+   npm run email:test
+   ```
+
+5. Check spam folder for emails
+
+## Performance Issues
+
+### Issue: API requests are slow
+
+**Causes:**
+- Large queries without pagination
+- Missing database indexes
+- Heavy concurrent load
+- Network latency
+
+**Solutions:**
+
+```bash
+# 1. Check database indexes
+mongosh
+use authx
+db.users.getIndexes()
+
+# 2. Use pagination in queries
+GET /api/v1/users/search?page=1&limit=10
+
+# 3. Enable caching
+# Already configured via Redis
+
+# 4. Check logs for slow queries
+tail -f logs/combined.log
+
+# 5. Monitor server resources
+top
+```
+
+### Issue: High memory usage
+
+**Solutions:**
+
+```bash
+# 1. Check for memory leaks
+npm run profile
+
+# 2. Limit log retention
+# Update .env: LOG_RETENTION=7
+
+# 3. Increase available RAM
+# Or deploy with more memory
+
+# 4. Optimize database queries
+# Add indexes and pagination
+```
+
+## Deployment Issues
+
+### Issue: Environment variables not loading
+
+**Symptoms:**
+- PORT is undefined
+- Database connection fails
+- JWT_SECRET is undefined
+
+**Solutions:**
+
+```bash
+# 1. Verify .env file exists
+ls -la .env
+
+# 2. Check .env is readable
+cat .env | grep PORT
+
+# 3. Verify environment variable is set
+echo $PORT
+
+# 4. Manually export if needed
+export NODE_ENV=production
+export MONGODB_URI=mongodb://...
+```
+
+### Issue: Docker build fails
+
+**Solutions:**
+
+```bash
+# 1. Check Dockerfile syntax
+docker build -t authx .
+
+# 2. Ensure all files exist
+ls -la Dockerfile docker-compose.yml
+
+# 3. Check Docker is running
+docker ps
+
+# 4. Clear Docker cache
+docker system prune -a
+```
+
+## Security Issues
+
+### Issue: CORS error in browser
+
+**Symptoms:**
+```
+Access to XMLHttpRequest at 'http://...' has been blocked by CORS policy
+```
+
+**Solutions:**
+
+```bash
+# Update CORS in .env
+CORS_ORIGIN=https://myapp.com,https://www.myapp.com
+
+# Or allow all (development only!)
+CORS_ORIGIN=*
+```
+
+### Issue: Password not hashing
+
+**Solutions:**
+
+```bash
+# Check bcrypt is installed
+npm list bcrypt
+
+# Verify BCRYPT_ROUNDS setting
+echo $BCRYPT_ROUNDS
+
+# Test password hashing
+npm run test:bcrypt
+```
+
+## Getting Help
+
+If none of these solutions work:
+
+1. **Check logs:**
+   ```bash
+   tail -f logs/combined.log
+   tail -f logs/error.log
+   ```
+
+2. **Verify configuration:**
+   ```bash
+   npm run config:check
+   ```
+
+3. **Search GitHub Issues:**
+   - Search for your error message
+   - Look for similar issues
+
+4. **Ask on GitHub Discussions:**
+   - Provide error message
+   - Share logs (without secrets)
+   - Include environment details
+
+5. **Check the FAQ:**
+   [Frequently Asked Questions](./faq)
+
+---
+
+**Found a new issue?** Report it on [GitHub Issues](https://github.com/issues) with:
+- Error message
+- Steps to reproduce
+- Environment details
+- Relevant logs

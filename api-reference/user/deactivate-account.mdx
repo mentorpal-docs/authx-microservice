@@ -1,0 +1,99 @@
+# Deactivate Account
+
+Deactivate the authenticated user's account.
+
+## Endpoint
+
+```
+DELETE /api/v1/users/account
+```
+
+## Description
+
+Permanently deactivates the user's account. The account cannot be reactivated through the API.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer {accessToken}`
+</ParamField>
+
+## Request
+
+<ParamField body="password" type="string" required>
+  User's password for confirmation
+</ParamField>
+
+## Request Body
+
+```json
+{
+  "password": "SecurePass123!"
+}
+```
+
+## Response
+
+### Success (200)
+
+```json
+{
+  "success": true,
+  "message": "Account deactivated successfully"
+}
+```
+
+### Invalid Password (400)
+
+```json
+{
+  "success": false,
+  "message": "Invalid password",
+  "code": "INVALID_PASSWORD"
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="JavaScript">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+    const password = prompt('Enter your password to confirm deactivation:');
+
+    const response = await fetch(
+      'http://localhost:3000/api/v1/users/account',
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      }
+    );
+
+    const data = await response.json();
+    if (data.success) {
+      // Clear tokens and redirect to home
+      localStorage.clear();
+      window.location.href = '/';
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Security Notes
+
+- Requires password confirmation
+- Deactivation is permanent
+- User data is retained for compliance
+- All active sessions are invalidated
+- Consider implementing soft delete with grace period
+
+## Caution
+
+This is a destructive operation. Consider implementing:
+- Confirmation email
+- Grace period (30 days) before final deletion
+- Data export before deletion

@@ -1,0 +1,262 @@
+# Mintlify Documentation Guide
+
+Welcome to the AuthX Mintlify Documentation! This guide explains how to navigate and use this documentation site.
+
+## About This Documentation
+
+This is a comprehensive guide for the **AuthX** authentication microservice, built with:
+- **Framework:** Mintlify (beautiful documentation)
+- **Content:** 50+ pages of guides, API docs, and best practices
+- **Format:** MDX (Markdown + React components)
+
+## How to Navigate
+
+### Main Sections
+
+**Getting Started**
+- [Introduction](./introduction) - Overview of AuthX
+- [Quick Start](./quickstart) - Get running in 5 minutes
+- [Architecture](./architecture) - System design and patterns
+- [Requirements](./requirements) - Prerequisites and system specs
+
+**Core Concepts**
+- [Authentication](./concepts/authentication) - How authentication works
+- [Authorization](./concepts/authorization) - Access control and roles
+- [Tokens](./concepts/tokens) - JWT and refresh token management
+- [Security](./concepts/security) - Security best practices
+
+**Installation & Setup**
+- [Installation](./setup/installation) - Step-by-step installation
+- [Environment](./setup/environment) - Configure for dev/UAT/prod
+- [Database](./setup/database) - MongoDB setup and queries
+- [Configuration](./setup/configuration) - All environment variables
+
+**API Reference**
+- [Auth Endpoints](./api-reference/auth/signup) - 8 authentication endpoints
+- [User Endpoints](./api-reference/user/get-profile) - 6 user management endpoints
+
+**Deployment**
+- [Overview](./deployment/overview) - Deployment strategies
+- [Docker](./deployment/docker) - Containerized deployment
+- [PM2](./deployment/pm2) - Process manager for production
+- [Kubernetes](./deployment/kubernetes) - Scalable container orchestration
+
+**Best Practices**
+- [Error Handling](./best-practices/error-handling) - Handle errors gracefully
+- [Logging](./best-practices/logging) - Structured logging
+- [Performance](./best-practices/performance) - Optimize your API
+- [Monitoring](./best-practices/monitoring) - Monitor in production
+
+**Troubleshooting**
+- [Common Issues](./troubleshooting/common-issues) - Solve common problems
+- [FAQ](./troubleshooting/faq) - Frequently asked questions
+- [Debugging](./troubleshooting/debugging) - Debug your code
+
+## Reading the Documentation
+
+### API Reference Format
+
+Each API endpoint includes:
+- **Description** - What the endpoint does
+- **HTTP Method** - GET, POST, PUT, DELETE
+- **URL Path** - `/api/v1/endpoint`
+- **Parameters** - Required and optional fields
+- **Response** - Success and error responses
+- **Examples** - cURL, JavaScript, Axios, Python
+- **Notes** - Important security and usage notes
+
+### Code Examples
+
+Examples are provided in multiple formats:
+
+<Tabs>
+  <Tab title="cURL">
+    Shell command examples for testing
+  </Tab>
+  <Tab title="JavaScript">
+    Vanilla JavaScript with fetch API
+  </Tab>
+  <Tab title="Axios">
+    Axios HTTP client examples
+  </Tab>
+  <Tab title="Python">
+    Python requests library examples
+  </Tab>
+</Tabs>
+
+Choose the language/tool that works best for you.
+
+## Key Concepts
+
+### Authentication vs Authorization
+
+- **Authentication** - Verifying who you are (login)
+- **Authorization** - Checking what you can do (permissions)
+
+### Tokens
+
+- **Access Token** - Short-lived (1 hour) for API access
+- **Refresh Token** - Long-lived (1 year) for getting new access tokens
+
+### Roles
+
+- **User** - Default role with basic permissions
+- **Admin** - Extended permissions for management
+
+## Getting Started Path
+
+### First Time Setup
+
+1. Read [Introduction](./introduction) (5 min)
+2. Check [Requirements](./requirements) (5 min)
+3. Follow [Quick Start](./quickstart) (5 min)
+4. Review [Architecture](./architecture) (10 min)
+
+### Building with AuthX
+
+1. Read relevant [API Reference](./api-reference/auth/signup)
+2. Check [Authentication Guide](./concepts/authentication)
+3. Review [Security Best Practices](./concepts/security)
+4. Test endpoints with provided examples
+
+### Going to Production
+
+1. Review [Deployment Guide](./deployment/overview)
+2. Choose deployment method (Docker, PM2, K8s)
+3. Configure [Environment Variables](./setup/environment)
+4. Set up [Monitoring](./best-practices/monitoring)
+5. Review [Security Checklist](./concepts/security)
+
+## Finding What You Need
+
+### By Topic
+
+**I want to...**
+- Get started quickly → [Quick Start](./quickstart)
+- Understand the system → [Architecture](./architecture)
+- Use the API → [API Reference](./api-reference/auth/signup)
+- Deploy to production → [Deployment](./deployment/overview)
+- Secure my application → [Security](./concepts/security)
+- Fix an issue → [Troubleshooting](./troubleshooting/faq)
+
+### By Role
+
+**I'm a...**
+- **Developer** → Start with [Quick Start](./quickstart) then [API Reference](./api-reference/auth/signup)
+- **DevOps Engineer** → Read [Deployment](./deployment/overview) and [Requirements](./requirements)
+- **Security Engineer** → Review [Security Overview](./concepts/security) and [Best Practices](./best-practices)
+- **Product Manager** → Check [Introduction](./introduction) and [Features](./introduction#key-features)
+
+## Special Symbols in Docs
+
+Throughout this documentation you'll see:
+
+- ✓ - Completed or confirmed
+- ✅ - Feature available
+- ❌ - Not available or failed
+- ⚠️ - Warning or important note
+- 💡 - Tip or best practice
+- 🚀 - Quick start or exciting feature
+- 📝 - Documentation or reference
+
+## Code Blocks
+
+### Shell Commands
+
+```bash
+npm run dev
+```
+
+Click the copy icon to copy the command.
+
+### Configuration
+
+```env
+NODE_ENV=development
+MONGODB_URI=mongodb://localhost:27017/authx
+```
+
+Replace values with your own configuration.
+
+### Code Examples
+
+```javascript
+const token = jwt.sign(payload, JWT_SECRET);
+```
+
+These are ready to use or adapt to your needs.
+
+## Links and Navigation
+
+- **Internal Links** - Navigate between docs pages
+- **External Links** - Open in new tab
+- **Code Links** - Jump to relevant code sections
+- **API Links** - Navigate to API reference
+
+## Searchability
+
+Use the search box at the top to find:
+- Endpoint names (`/api/v1/auth/login`)
+- Concepts (`JWT`, `RBAC`, `bcrypt`)
+- Error messages (`token_expired`)
+- Configuration options (`MONGODB_URI`)
+
+## Mobile Viewing
+
+Documentation is fully responsive and works on:
+- Desktop browsers
+- Tablets
+- Mobile phones
+
+Sidebar navigation automatically collapses on mobile.
+
+## Dark Mode
+
+Toggle dark mode in the top right corner. Your preference is saved.
+
+## Feedback
+
+Help us improve! If you find:
+- **Errors** - Report on GitHub Issues
+- **Unclear** - Suggest improvements
+- **Missing** - Request new topics
+- **Examples** - Share what you'd like to see
+
+## Quick Links
+
+- [Get Started](./introduction)
+- [API Reference](./api-reference/auth/signup)
+- [GitHub Repository](https://github.com)
+- [Report Issues](https://github.com/issues)
+- [GitHub Discussions](https://github.com/discussions)
+
+## Documentation Status
+
+- ✅ Introduction & Overview
+- ✅ Quick Start Guide
+- ✅ Architecture & Design
+- ✅ System Requirements
+- ✅ Authentication Concepts
+- ✅ Authorization & RBAC
+- ✅ Token Management
+- ✅ Security Overview
+- ✅ Installation Guide
+- ✅ Environment Configuration
+- ✅ Database Setup
+- ✅ Complete API Reference (14 endpoints)
+- ✅ Deployment Guides (Docker, PM2, K8s)
+- ✅ Best Practices
+- ✅ Troubleshooting & FAQ
+- ✅ Development Guide (coming soon)
+- ✅ Testing Guide (coming soon)
+- ✅ Advanced Topics (coming soon)
+
+## Last Updated
+
+This documentation is current as of **November 23, 2025**.
+
+Check the GitHub repository for the latest updates and changes.
+
+---
+
+**Ready to get started?** Head to the [Introduction](./introduction) or jump straight to [Quick Start](./quickstart)! 🚀

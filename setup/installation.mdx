@@ -1,0 +1,361 @@
+# Installation Guide
+
+Step-by-step installation instructions for AuthX.
+
+## Prerequisites Check
+
+Before installing, verify you have all requirements:
+
+```bash
+# Check Node.js version (should be 18+)
+node --version
+
+# Check npm version (should be 8+)
+npm --version
+
+# Check Git (optional but recommended)
+git --version
+```
+
+If any are missing, [install them first](../requirements).
+
+## Step 1: Clone Repository
+
+```bash
+# HTTPS
+git clone https://github.com/yourusername/authx.git
+cd authx
+
+# Or SSH
+git clone git@github.com:yourusername/authx.git
+cd authx
+```
+
+## Step 2: Install Dependencies
+
+```bash
+# Install all dependencies from package.json
+npm install
+
+# This installs 24+ packages including:
+# - express (web framework)
+# - mongoose (database)
+# - jsonwebtoken (JWT)
+# - bcrypt (password hashing)
+# - redis (caching)
+# - winston (logging)
+# And many more...
+```
+
+Verify installation:
+
+```bash
+# List all installed packages
+npm list
+
+# Check specific packages
+npm list express mongoose jsonwebtoken
+```
+
+## Step 3: Environment Configuration
+
+Copy environment template:
+
+```bash
+# For development
+cp .env.development .env
+
+# For UAT
+cp .env.uat .env
+
+# For production
+cp .env.production .env
+```
+
+Edit the `.env` file with your settings:
+
+```bash
+# Using your favorite editor
+nano .env      # or
+vim .env       # or
+code .env      # VS Code
+```
+
+### Essential Environment Variables
+
+```env
+# Server Configuration
+NODE_ENV=development
+PORT=3000
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/authx
+
+# Redis (caching)
+REDIS_URL=redis://localhost:6379
+
+# Security
+JWT_SECRET=your-super-secret-key-min-32-characters-long
+JWT_EXPIRY=1h
+REFRESH_TOKEN_EXPIRY=1y
+BCRYPT_ROUNDS=10
+
+# Email Service
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+
+# CORS
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+
+# Logging
+LOG_LEVEL=info
+LOG_FILE=logs/combined.log
+```
+
+## Step 4: Database Setup
+
+### Option A: Using Docker (Recommended)
+
+```bash
+# Ensure Docker and Docker Compose are installed
+docker --version
+docker-compose --version
+
+# Start MongoDB and Redis
+docker-compose up -d
+
+# Verify services are running
+docker ps
+
+# You should see:
+# - mongo (MongoDB)
+# - redis (Redis)
+# - mongo-express (Database UI)
+```
+
+Access Mongo Express at: http://localhost:8081
+
+### Option B: Local Installation
+
+**MongoDB:**
+```bash
+# macOS
+brew install mongodb-community
+brew services start mongodb-community
+
+# Ubuntu
+sudo apt-get install mongodb
+sudo systemctl start mongodb
+
+# Verify
+mongosh  # Should connect to local MongoDB
+```
+
+**Redis:**
+```bash
+# macOS
+brew install redis
+brew services start redis
+
+# Ubuntu
+sudo apt-get install redis-server
+sudo systemctl start redis-server
+
+# Verify
+redis-cli ping  # Should return PONG
+```
+
+## Step 5: Verify Installation
+
+```bash
+# Verify MongoDB connection
+npm run db:test
+
+# Verify Redis connection
+npm run redis:test
+
+# Output should show:
+# MongoDB: ✓ Connected
+# Redis: ✓ Connected
+```
+
+## Step 6: Start the Server
+
+```bash
+# Development mode (with auto-reload)
+npm run dev
+
+# You should see:
+# 🚀 Server is running on http://localhost:3000
+# 📦 Environment: development
+# 🗄️  Database connected
+# 📨 Email service ready
+```
+
+## Step 7: Test the Installation
+
+Open a new terminal and test the API:
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Expected response:
+# {"status":"ok","timestamp":"2025-11-23T10:30:00Z"}
+```
+
+## Installation Troubleshooting
+
+### Node/npm Not Found
+
+```bash
+# Reinstall Node.js from https://nodejs.org
+# Then verify installation
+node --version
+npm --version
+```
+
+### MongoDB Connection Error
+
+```bash
+# Ensure MongoDB is running
+docker-compose ps    # If using Docker
+
+# Or for local MongoDB
+mongosh              # Should connect
+
+# Check connection string in .env
+MONGODB_URI=mongodb://localhost:27017/authx
+```
+
+### Redis Connection Error
+
+```bash
+# Ensure Redis is running
+redis-cli ping      # Should return PONG
+
+# If using Docker
+docker-compose logs redis
+
+# Check connection string in .env
+REDIS_URL=redis://localhost:6379
+```
+
+### Port Already in Use
+
+```bash
+# Find process on port 3000
+lsof -ti:3000
+
+# Kill the process
+lsof -ti:3000 | xargs kill -9
+
+# Or use different port
+PORT=3001 npm run dev
+```
+
+### npm install Fails
+
+```bash
+# Clear npm cache
+npm cache clean --force
+
+# Try installing again
+npm install
+
+# If still fails, check npm version
+npm --version  # Should be 8+
+
+# Update npm if needed
+npm install -g npm@latest
+```
+
+### Low Disk Space
+
+```bash
+# Check disk space
+df -h
+
+# Clean npm cache
+npm cache clean --force
+
+# Remove node_modules and reinstall
+rm -rf node_modules
+npm install
+```
+
+## Verifying Full Installation
+
+```bash
+# Check all services
+docker-compose ps              # If using Docker
+
+# Run tests
+npm test
+
+# Check logs
+npm run logs
+
+# Try making an API call
+curl -X POST http://localhost:3000/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "TestPass123!",
+    "firstName": "Test",
+    "lastName": "User"
+  }'
+
+# Expected response should include user data and tokens
+```
+
+## Next Steps
+
+Once installation is complete:
+
+1. **[Configuration](./configuration)** - Customize environment variables
+2. **[Quick Start](../quickstart)** - Test your first endpoints
+3. **[Running Server](../development/running-server)** - Choose run method
+4. **[Deployment](../deployment/overview)** - Deploy to production
+
+## Getting Help
+
+If you encounter issues:
+
+1. Check [Common Issues](../troubleshooting/common-issues)
+2. Review [Troubleshooting FAQ](../troubleshooting/faq)
+3. Check logs: `tail -f logs/combined.log`
+4. Search GitHub issues
+5. Ask on community forum
+
+## Installing Specific Versions
+
+```bash
+# Install specific Node version using nvm
+nvm install 18.12.0
+nvm use 18.12.0
+
+# Install specific npm version
+npm install -g npm@8.19.0
+```
+
+## Global Installation (Optional)
+
+```bash
+# Install useful global tools
+npm install -g nodemon    # Auto-reload on file changes
+npm install -g pm2        # Production process manager
+npm install -g jest       # Testing framework
+
+# Verify
+which nodemon
+which pm2
+```
+
+---
+
+**Congratulations!** Your AuthX installation is complete. 🎉
+
+**Next:** Follow the [Quick Start](../quickstart) guide to test your setup.

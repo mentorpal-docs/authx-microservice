@@ -1,0 +1,302 @@
+# User Sign Up
+
+Register a new user account in the system.
+
+## Endpoint
+
+```
+POST /api/v1/auth/signup
+```
+
+## Description
+
+Creates a new user account with email and password. The user must provide valid credentials including email, password, first name, and last name.
+
+## Rate Limiting
+
+- **Limit:** 3 requests per hour
+- **Window:** 60 minutes
+- **Identifier:** IP address
+
+## Request
+
+<ParamField body="email" type="string" required>
+  User's email address (must be unique)
+  
+  Validation:
+  - Valid email format
+  - Unique in database
+  - Max 255 characters
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password
+  
+  Validation:
+  - Minimum 8 characters
+  - At least 1 uppercase letter
+  - At least 1 lowercase letter
+  - At least 1 number
+  - At least 1 special character (!@#$%^&*)
+</ParamField>
+
+<ParamField body="firstName" type="string" required>
+  User's first name
+  
+  Validation:
+  - 2-50 characters
+  - Letters and spaces only
+</ParamField>
+
+<ParamField body="lastName" type="string" required>
+  User's last name
+  
+  Validation:
+  - 2-50 characters
+  - Letters and spaces only
+</ParamField>
+
+## Request Body
+
+```json
+{
+  "email": "john.doe@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+## Response
+
+### Success (201)
+
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "_id": "507f1f77bcf86cd799439011",
+      "email": "john.doe@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "user",
+      "isActive": true,
+      "createdAt": "2025-11-23T10:30:00.000Z",
+      "updatedAt": "2025-11-23T10:30:00.000Z"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJpYXQiOjE2MzMyMzAwMDB9.SIGNATURE",
+    "refreshToken": "507f1f77bcf86cd799439012"
+  }
+}
+```
+
+<ResponseField name="success" type="boolean">
+  Whether the request was successful
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable response message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Response data object
+  
+  <Expandable title="data">
+    <ResponseField name="user" type="object">
+      Created user object
+      
+      <Expandable title="user">
+        <ResponseField name="_id" type="string">
+          Unique user identifier
+        </ResponseField>
+        
+        <ResponseField name="email" type="string">
+          User's email address
+        </ResponseField>
+        
+        <ResponseField name="firstName" type="string">
+          User's first name
+        </ResponseField>
+        
+        <ResponseField name="lastName" type="string">
+          User's last name
+        </ResponseField>
+        
+        <ResponseField name="role" type="string">
+          User role: "user" or "admin"
+        </ResponseField>
+        
+        <ResponseField name="isActive" type="boolean">
+          Whether account is active
+        </ResponseField>
+        
+        <ResponseField name="createdAt" type="string">
+          Account creation timestamp
+        </ResponseField>
+        
+        <ResponseField name="updatedAt" type="string">
+          Last update timestamp
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="accessToken" type="string">
+      JWT access token (expires in 1 hour)
+      
+      Include in Authorization header for authenticated requests
+    </ResponseField>
+    
+    <ResponseField name="refreshToken" type="string">
+      Refresh token for generating new access tokens
+      
+      Store securely, typically in httpOnly cookie
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error Responses
+
+#### Validation Error (400)
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "email",
+      "message": "Invalid email format"
+    },
+    {
+      "field": "password",
+      "message": "Password must contain at least 1 uppercase letter"
+    }
+  ]
+}
+```
+
+#### Email Already Exists (409)
+
+```json
+{
+  "success": false,
+  "message": "Email already registered",
+  "code": "EMAIL_EXISTS"
+}
+```
+
+#### Rate Limit Exceeded (429)
+
+```json
+{
+  "success": false,
+  "message": "Too many signup attempts. Please try again later.",
+  "retryAfter": 3600
+}
+```
+
+#### Server Error (500)
+
+```json
+{
+  "success": false,
+  "message": "Internal server error",
+  "code": "INTERNAL_ERROR"
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="cURL">
+    ```bash
+    curl -X POST http://localhost:3000/api/v1/auth/signup \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "john.doe@example.com",
+        "password": "SecurePass123!",
+        "firstName": "John",
+        "lastName": "Doe"
+      }'
+    ```
+  </Tab>
+
+  <Tab title="JavaScript">
+    ```javascript
+    const response = await fetch('http://localhost:3000/api/v1/auth/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: 'john.doe@example.com',
+        password: 'SecurePass123!',
+        firstName: 'John',
+        lastName: 'Doe'
+      })
+    });
+
+    const data = await response.json();
+    const { accessToken, refreshToken } = data.data;
+
+    // Store tokens
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    ```
+  </Tab>
+
+  <Tab title="Python">
+    ```python
+    import requests
+
+    response = requests.post(
+      'http://localhost:3000/api/v1/auth/signup',
+      json={
+        'email': 'john.doe@example.com',
+        'password': 'SecurePass123!',
+        'firstName': 'John',
+        'lastName': 'Doe'
+      }
+    )
+
+    data = response.json()
+    access_token = data['data']['accessToken']
+    refresh_token = data['data']['refreshToken']
+    ```
+  </Tab>
+
+  <Tab title="Axios">
+    ```javascript
+    const axios = require('axios');
+
+    const response = await axios.post(
+      'http://localhost:3000/api/v1/auth/signup',
+      {
+        email: 'john.doe@example.com',
+        password: 'SecurePass123!',
+        firstName: 'John',
+        lastName: 'Doe'
+      }
+    );
+
+    const { accessToken, refreshToken } = response.data.data;
+    ```
+  </Tab>
+</Tabs>
+
+## Security Notes
+
+- Password is never returned in response
+- Use HTTPS in production
+- Store refresh token securely (httpOnly cookie recommended)
+- Email must be verified before access to sensitive features
+- Implement email verification flow separately
+
+## Next Steps
+
+After signup, users can:
+1. [Login](./login) to get new tokens
+2. [Get profile](../user/get-profile) to retrieve account info
+3. [Update profile](../user/update-profile) to change information

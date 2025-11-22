@@ -1,0 +1,276 @@
+# Quick Start
+
+Get AuthX running in just 5 minutes!
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Node.js** 18.0+ ([Download](https://nodejs.org))
+- **npm** 8.0+ (comes with Node.js)
+- **Docker** & **Docker Compose** (optional, but recommended)
+- **Git** for cloning the repository
+
+## Step 1: Clone & Install
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd authx
+
+# Install dependencies
+npm install
+```
+
+This installs all 24 required dependencies including Express, Mongoose, Redis, JWT, and more.
+
+## Step 2: Set Up Environment
+
+Copy the development environment file:
+
+```bash
+cp .env.development .env
+```
+
+The `.env` file includes:
+- Database connection string
+- JWT secret
+- Redis configuration
+- Email service settings
+- API keys and credentials
+
+**For local development**, the defaults are usually fine. For production, update:
+- `MONGODB_URI` - Your MongoDB connection string
+- `REDIS_URL` - Your Redis connection
+- `JWT_SECRET` - A strong secret key
+- `EMAIL_USER` & `EMAIL_PASSWORD` - SMTP credentials
+
+## Step 3: Start Services
+
+### Option A: Using Docker (Recommended)
+
+```bash
+# Start MongoDB, Redis, and other services
+docker-compose up -d
+```
+
+This starts:
+- MongoDB (port 27017)
+- Redis (port 6379)
+- Mongo Express UI (port 8081) - manage database visually
+
+### Option B: Local Installation
+
+If you have MongoDB and Redis installed locally:
+
+```bash
+# Ensure MongoDB is running
+mongod
+
+# Ensure Redis is running (in another terminal)
+redis-server
+```
+
+## Step 4: Run the Server
+
+```bash
+# Start in development mode
+npm run dev
+```
+
+You should see:
+
+```
+🚀 Server is running on http://localhost:3000
+📦 Environment: development
+🗄️  Database connected
+📨 Email service ready
+```
+
+## Step 5: Test the API
+
+Open a new terminal and test a simple endpoint:
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# You should get:
+# {"status":"ok","timestamp":"2025-11-23T10:30:00Z"}
+```
+
+## Your First API Call
+
+### Sign Up a New User
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!",
+    "firstName": "John",
+    "lastName": "Doe"
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "user": {
+      "_id": "507f1f77bcf86cd799439011",
+      "email": "user@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "user",
+      "createdAt": "2025-11-23T10:30:00Z"
+    },
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "507f1f77bcf86cd799439012"
+  }
+}
+```
+
+### Login
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+### Get Your Profile
+
+Use the `accessToken` from signup/login:
+
+```bash
+curl http://localhost:3000/api/v1/users/profile \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## Using Postman
+
+We've included a Postman collection for easier testing:
+
+1. Import `postman-collection.json` into Postman
+2. Set the `base_url` variable to `http://localhost:3000`
+3. Set the `access_token` variable from login response
+4. Start making requests!
+
+## Useful Commands
+
+```bash
+# Development with hot reload
+npm run dev
+
+# Production build
+npm run build
+
+# Run tests
+npm run test
+
+# Run specific test file
+npm test -- tests/unit/validators.test.js
+
+# Lint code
+npm run lint
+
+# Format code
+npm run format
+
+# Docker operations
+docker-compose up -d      # Start services
+docker-compose down       # Stop services
+docker-compose logs -f    # View logs
+
+# PM2 operations (for production)
+npm run start             # Start with PM2
+npm run stop              # Stop PM2 processes
+npm run restart           # Restart PM2 processes
+```
+
+## View Logs
+
+```bash
+# Real-time logs
+tail -f logs/combined.log
+
+# Error logs only
+tail -f logs/error.log
+
+# Docker logs
+docker-compose logs -f authx
+```
+
+## MongoDB Management
+
+Access Mongo Express at `http://localhost:8081`:
+- No authentication required
+- View all databases and collections
+- Execute queries
+- Manage documents
+
+## Common Issues
+
+### Port Already in Use
+
+```bash
+# Kill process on port 3000
+lsof -ti:3000 | xargs kill -9
+
+# Or use different port
+PORT=3001 npm run dev
+```
+
+### MongoDB Connection Error
+
+```bash
+# Check if MongoDB is running
+docker-compose ps
+
+# Restart services
+docker-compose down
+docker-compose up -d
+```
+
+### Redis Connection Error
+
+Ensure Redis is running:
+```bash
+# Check Redis
+redis-cli ping
+# Should return: PONG
+```
+
+### Email Service Not Working
+
+Check SMTP settings in `.env`:
+```
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password  # Use app password, not regular password
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+```
+
+## Next Steps
+
+Congratulations! Your authentication service is running. 🎉
+
+- **Explore API** → [API Reference](../api-reference/auth/signup)
+- **Learn Architecture** → [System Design](../architecture)
+- **Deploy** → [Deployment Guide](../deployment/overview)
+- **Secure It** → [Security Best Practices](../security/overview)
+- **Scale It** → [Production Setup](../deployment/kubernetes)
+
+## Get Help
+
+- 📖 Read the [Architecture Guide](../architecture)
+- 🔍 Check [Common Issues](../troubleshooting/common-issues)
+- 💬 Ask on our [Community Forum](https://forum.example.com)
+- 🐛 Report bugs on [GitHub Issues](https://github.com/issues)

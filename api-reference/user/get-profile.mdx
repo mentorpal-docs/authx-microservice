@@ -1,0 +1,106 @@
+# Get User Profile
+
+Retrieve the authenticated user's profile information.
+
+## Endpoint
+
+```
+GET /api/v1/users/profile
+```
+
+## Description
+
+Returns the complete profile information of the authenticated user.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer {accessToken}`
+</ParamField>
+
+## Response
+
+### Success (200)
+
+```json
+{
+  "success": true,
+  "message": "Profile retrieved successfully",
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "user",
+    "isActive": true,
+    "preferences": {
+      "notifications": true,
+      "emailFrequency": "daily"
+    },
+    "createdAt": "2025-11-23T10:30:00.000Z",
+    "updatedAt": "2025-11-23T10:30:00.000Z"
+  }
+}
+```
+
+### Unauthorized (401)
+
+```json
+{
+  "success": false,
+  "message": "No authentication token provided",
+  "code": "NO_TOKEN"
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="cURL">
+    ```bash
+    curl http://localhost:3000/api/v1/users/profile \
+      -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+    ```
+  </Tab>
+
+  <Tab title="JavaScript">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+
+    const response = await fetch(
+      'http://localhost:3000/api/v1/users/profile',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const data = await response.json();
+    const user = data.data;
+    ```
+  </Tab>
+
+  <Tab title="Axios">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+
+    const response = await axios.get(
+      'http://localhost:3000/api/v1/users/profile',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const user = response.data.data;
+    ```
+  </Tab>
+</Tabs>
+
+## Security Notes
+
+- Requires valid access token
+- Returns non-sensitive user information
+- Sensitive data (password, tokens) never included

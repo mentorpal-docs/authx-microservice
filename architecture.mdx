@@ -1,0 +1,417 @@
+# Architecture Overview
+
+Understand the design and structure of AuthX.
+
+## System Architecture
+
+AuthX follows a **Service-Oriented Architecture** with clear separation of concerns:
+
+```
+┌─────────────────────────────────┐
+│   Client Applications           │
+│ (Web, Mobile, Third-party)      │
+└────────────┬────────────────────┘
+             │ HTTPS
+┌────────────▼────────────────────┐
+│   API Gateway / Load Balancer    │
+│  (Rate Limiting, CORS, Logging) │
+└────────────┬────────────────────┘
+             │
+┌────────────▼────────────────────────────────────────┐
+│      AuthX Microservice (Node.js + Express)        │
+│                                                     │
+│  ┌──────────────────────────────────────────────┐ │
+│  │  Middleware Layer                            │ │
+│  │  - Helmet (Security Headers)                 │ │
+│  │  - CORS Protection                           │ │
+│  │  - Rate Limiting                             │ │
+│  │  - Body Parsing                              │ │
+│  └──────────────────────────────────────────────┘ │
+│                      │                             │
+│  ┌──────────────────▼──────────────────────────┐ │
+│  │  Route Handlers                              │ │
+│  │  - Auth Routes (/api/v1/auth/*)              │ │
+│  │  - User Routes (/api/v1/users/*)             │ │
+│  └──────────────────┬──────────────────────────┘ │
+│                     │                             │
+│  ┌──────────────────▼──────────────────────────┐ │
+│  │  Controllers                                 │ │
+│  │  - Auth Controller (8 endpoints)             │ │
+│  │  - User Controller (6 endpoints)             │ │
+│  └──────────────────┬──────────────────────────┘ │
+│                     │                             │
+│  ┌──────────────────▼──────────────────────────┐ │
+│  │  Services (Business Logic)                   │ │
+│  │  - AuthService (signup, login, etc.)         │ │
+│  │  - TokenService (JWT management)             │ │
+│  │  - UserService (profile management)          │ │
+│  │  - OTPService (password recovery)            │ │
+│  └──────────────────┬──────────────────────────┘ │
+│                     │                             │
+│  ┌──────────────────▼──────────────────────────┐ │
+│  │  Data Access Layer                           │ │
+│  │  - Mongoose Models                           │ │
+│  │  - Database Connections                      │ │
+│  └──────────────────────────────────────────────┘ │
+└─────────────────────┬───────────────────────────────┘
+                      │
+          ┌───────────┼───────────┐
+          │           │           │
+          ▼           ▼           ▼
+      MongoDB      Redis         SMTP
+      (Database)   (Cache)    (Email)
+```
+
+## Layer Breakdown
+
+### 1. **Middleware Layer**
+
+Processes all incoming requests before they reach controllers.
+
+**Key Middleware:**
+- `helmet()` - Sets HTTP security headers
+- `cors()` - Handles cross-origin requests
+- `express.json()` - Parses JSON request bodies
+- `morgan()` - Logs HTTP requests
+- `rateLimiter()` - Rate limiting per endpoint
+- `authenticateJWT()` - Validates JWT tokens
+- `validateInput()` - Validates request data
+
+### 2. **Controllers**
+
+HTTP request handlers that process input and return responses.
+
+**AuthController:**
+- `signup()` - Register new user
+- `login()` - Authenticate user
+- `logout()` - Invalidate tokens
+- `refreshToken()` - Generate new access token
+- `forgotPassword()` - Initiate password reset
+- `resetPassword()` - Complete password reset
+- `changePassword()` - Change password (authenticated)
+- `verifyToken()` - Check token validity
+
+**UserController:**
+- `getProfile()` - Retrieve user profile
+- `updateProfile()` - Update user information
+- `getPreferences()` - Get user preferences
+- `updatePreferences()` - Save user preferences
+- `deactivateAccount()` - Deactivate account
+- `searchUsers()` - Search users (admin only)
+
+### 3. **Services**
+
+Encapsulate business logic and database operations.
+
+**AuthService (180 lines)**
+- User signup with validation
+- Login with account lockout
+- Password reset flows
+- Token generation
+- Email notifications
+
+**TokenService (100 lines)**
+- Generate JWT access tokens
+- Generate refresh tokens
+- Token rotation on refresh
+- Token revocation
+
+**UserService (120 lines)**
+- User CRUD operations
+- Profile management
+- Preference handling
+- Account deactivation
+
+**OTPService (90 lines)**
+- OTP generation
+- OTP verification
+- Attempt tracking
+- Auto-cleanup
+
+### 4. **Data Models**
+
+Mongoose schemas for MongoDB collections.
+
+**User Model**
+```javascript
+{
+  _id: ObjectId,
+  email: String (unique),
+  password: String (hashed),
+  firstName: String,
+  lastName: String,
+  role: enum ['user', 'admin'],
+  isActive: Boolean,
+  failedLoginAttempts: Number,
+  accountLockedUntil: Date,
+  preferences: Object,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+**RefreshToken Model**
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId (FK),
+  token: String (unique, hashed),
+  expiresAt: Date,
+  isRevoked: Boolean,
+  revokedAt: Date,
+  deviceInfo: Object,
+  createdAt: Date
+}
+```
+
+**OTP Model**
+```javascript
+{
+  _id: ObjectId,
+  email: String,
+  otp: String,
+  type: enum ['password_reset', 'email_verification'],
+  expiresAt: Date,
+  isUsed: Boolean,
+  attempts: Number,
+  createdAt: Date
+}
+```
+
+**AuditLog Model**
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  action: String,
+  status: enum ['success', 'failure'],
+  ipAddress: String,
+  userAgent: String,
+  timestamp: Date,
+  metadata: Object
+}
+```
+
+## Data Flow
+
+### User Login Flow
+
+```
+Client Request
+    │
+    ▼
+Route Handler
+    │
+    ├─ Check Rate Limit
+    ├─ Validate Input
+    │
+    ▼
+Auth Controller
+    │
+    ▼
+Auth Service
+    ├─ Find user by email
+    ├─ Check if account locked
+    ├─ Verify password
+    ├─ Reset failed attempts
+    │
+    ▼
+Token Service
+    ├─ Generate JWT
+    ├─ Create refresh token
+    ├─ Save to MongoDB
+    │
+    ▼
+Audit Logger
+    ├─ Log login event
+    │
+    ▼
+Response with Tokens
+```
+
+### Password Reset Flow
+
+```
+Client: Forgot Password
+    │
+    ▼
+Auth Controller: forgotPassword()
+    │
+    ▼
+Auth Service
+    ├─ Find user by email
+    │
+    ▼
+OTP Service
+    ├─ Generate OTP
+    ├─ Save to MongoDB
+    │
+    ▼
+Email Service
+    ├─ Send OTP email
+    │
+    ▼
+Response: "Check your email"
+    │
+    │ (User gets OTP from email)
+    │
+    ▼
+Client: Reset Password with OTP
+    │
+    ▼
+Auth Controller: resetPassword()
+    │
+    ▼
+OTP Service
+    ├─ Verify OTP
+    ├─ Mark as used
+    │
+    ▼
+Auth Service
+    ├─ Hash new password
+    ├─ Update user
+    │
+    ▼
+Response: "Password reset successfully"
+```
+
+## Security Layers
+
+### 1. Network Layer
+- HTTPS/TLS encryption
+- DDoS protection
+- WAF (Web Application Firewall)
+
+### 2. Application Layer
+- Input validation
+- SQL/NoSQL injection prevention
+- CORS enforcement
+- Rate limiting
+
+### 3. Authentication Layer
+- Password hashing (bcrypt, 12 rounds)
+- JWT token signing (HS256)
+- Token expiration (1 hour access, 1 year refresh)
+- Account lockout after 5 failed attempts
+
+### 4. Authorization Layer
+- Role-Based Access Control (RBAC)
+- Endpoint permission checks
+- User verification
+
+### 5. Data Layer
+- MongoDB encryption at rest
+- Field-level encryption (optional)
+- Secure password storage
+
+### 6. Audit Layer
+- Complete audit logs
+- Action tracking
+- IP logging
+- Timestamp recording
+
+## Performance Optimization
+
+### Caching Strategy
+- **Redis** for token blacklist
+- **Redis** for rate limiting counters
+- **In-memory** for configuration
+
+### Database Optimization
+- **Indexes** on frequently queried fields
+- **Compound indexes** for common queries
+- **TTL indexes** for automatic cleanup
+
+### API Optimization
+- **Gzip compression** for responses
+- **JSON serialization** optimization
+- **Database connection pooling**
+
+## Scalability
+
+### Horizontal Scaling
+- Stateless design (no server session storage)
+- Shared Redis for token management
+- Load balancer distribution
+
+### Vertical Scaling
+- Process clustering with PM2
+- Memory management
+- CPU optimization
+
+### Database Scaling
+- MongoDB sharding
+- Read replicas
+- Atlas auto-scaling
+
+## Environment Progression
+
+```
+Development
+├─ Local MongoDB
+├─ Local Redis
+├─ Hot reload
+├─ Verbose logging
+└─ Rate limiting disabled
+
+    ↓ (Test & Validate)
+
+UAT (Staging)
+├─ MongoDB Atlas (UAT cluster)
+├─ Redis Enterprise (UAT)
+├─ Production-like config
+├─ Rate limiting enabled
+└─ Email notifications
+
+    ↓ (Final Testing)
+
+Production
+├─ MongoDB Atlas (Production)
+├─ Redis Enterprise (Production)
+├─ Optimized performance
+├─ Security hardening
+├─ Load balancing
+└─ Auto-scaling enabled
+```
+
+## Key Design Decisions
+
+### 1. **Service-Oriented Architecture**
+Each domain (auth, user, token) has its own service layer for separation of concerns.
+
+### 2. **Middleware-Based Request Processing**
+Express middleware for cross-cutting concerns (logging, security, validation).
+
+### 3. **Model-Based Data Abstraction**
+Mongoose models encapsulate schema and business logic.
+
+### 4. **Centralized Error Handling**
+Custom error classes for type-safe error handling.
+
+### 5. **Stateless Design**
+All state stored in Redis/MongoDB, enabling horizontal scaling.
+
+### 6. **Rate Limiting**
+Per-endpoint rate limiting for abuse prevention.
+
+### 7. **Comprehensive Audit Logging**
+Every action tracked for compliance and debugging.
+
+## Technology Choices
+
+| Decision | Rationale |
+|----------|-----------|
+| **Express.js** | Lightweight, flexible, large ecosystem |
+| **MongoDB** | Document-based, flexible schema, horizontal scaling |
+| **Redis** | Fast in-memory cache, rate limiting, token management |
+| **JWT** | Stateless authentication, easy to scale |
+| **bcrypt** | Industry-standard password hashing |
+| **Mongoose** | Schema validation, middleware support |
+| **Winston** | Structured logging, multiple transports |
+
+---
+
+**Next Steps:**
+- [Explore API Endpoints](../api-reference/auth/signup)
+- [Deployment Guide](../deployment/overview)
+- [Security Best Practices](../security/overview)

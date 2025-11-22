@@ -1,0 +1,108 @@
+# Refresh Token
+
+Generate a new access token using a refresh token.
+
+## Endpoint
+
+```
+POST /api/v1/auth/refresh
+```
+
+## Description
+
+Generates a new access token using a valid refresh token. Implements token rotation for enhanced security.
+
+## Request
+
+<ParamField body="refreshToken" type="string" required>
+  Valid refresh token from previous login/signup
+</ParamField>
+
+## Request Body
+
+```json
+{
+  "refreshToken": "507f1f77bcf86cd799439012"
+}
+```
+
+## Response
+
+### Success (200)
+
+```json
+{
+  "success": true,
+  "message": "Token refreshed successfully",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "507f1f77bcf86cd799439013"
+  }
+}
+```
+
+### Invalid Token (401)
+
+```json
+{
+  "success": false,
+  "message": "Invalid or expired refresh token",
+  "code": "INVALID_TOKEN"
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="JavaScript">
+    ```javascript
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    const response = await fetch('http://localhost:3000/api/v1/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        refreshToken
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      const { accessToken, refreshToken: newRefreshToken } = data.data;
+      
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', newRefreshToken);
+    }
+    ```
+  </Tab>
+
+  <Tab title="Axios">
+    ```javascript
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    const response = await axios.post(
+      'http://localhost:3000/api/v1/auth/refresh',
+      { refreshToken }
+    );
+
+    const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+    ```
+  </Tab>
+</Tabs>
+
+## Token Lifecycle
+
+- **Access Token:** 1 hour expiry
+- **Refresh Token:** 1 year expiry
+- **Refresh on expiry:** Call this endpoint when access token expires
+- **Token rotation:** New refresh token issued with each refresh
+
+## Security Notes
+
+- Refresh tokens are rotated on each use
+- Store refresh token securely (httpOnly cookie)
+- Revoke all tokens on logout
+- Monitor for suspicious refresh patterns

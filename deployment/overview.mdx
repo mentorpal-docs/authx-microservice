@@ -1,0 +1,326 @@
+# Deployment Overview
+
+Choose your deployment strategy based on your needs.
+
+## Deployment Options
+
+AuthX supports three main deployment approaches:
+
+| Option | Best For | Complexity | Cost | Scalability |
+|--------|----------|-----------|------|-------------|
+| **Docker** | Microservices, containers | Medium | Low | High |
+| **PM2** | VPS, single server | Low | Low | Medium |
+| **Kubernetes** | Enterprise, cloud-native | High | Medium | Very High |
+
+## Quick Comparison
+
+### Docker (Recommended for most)
+
+```bash
+docker-compose up -d
+```
+
+**Pros:**
+- ✅ Easy deployment
+- ✅ Consistent environments
+- ✅ Scales with orchestration (K8s)
+- ✅ Replicate local → production
+
+**Cons:**
+- ❌ Requires Docker knowledge
+- ❌ Container overhead
+
+**Best for:** Teams with Docker experience, microservices architecture
+
+### PM2 (Simplest)
+
+```bash
+npm run start
+```
+
+**Pros:**
+- ✅ Simple setup (npm install + start)
+- ✅ Low overhead
+- ✅ Process management included
+- ✅ Monitoring available
+
+**Cons:**
+- ❌ Limited orchestration
+- ❌ Manual load balancing
+
+**Best for:** Small to medium deployments, VPS hosting
+
+### Kubernetes (Most powerful)
+
+```bash
+kubectl apply -f k8s/
+```
+
+**Pros:**
+- ✅ Auto-scaling
+- ✅ Load balancing
+- ✅ Self-healing
+- ✅ Enterprise-grade
+
+**Cons:**
+- ❌ Steep learning curve
+- ❌ More complex setup
+- ❌ Higher operational overhead
+
+**Best for:** Enterprise, high traffic, complex requirements
+
+## Choosing Your Deployment
+
+### For Development
+Use **Local or Docker**:
+```bash
+# Option 1: Local
+npm install && npm run dev
+
+# Option 2: Docker (recommended)
+docker-compose up -d
+npm run dev
+```
+
+### For Staging (UAT)
+Use **Docker or PM2**:
+```bash
+# Docker approach
+docker build -t authx:staging .
+docker-compose -f docker-compose.staging.yml up -d
+
+# PM2 approach
+npm install --production
+npm run start:uat
+```
+
+### For Production
+Use **Docker + Kubernetes** or **PM2 + Load Balancer**:
+
+```bash
+# Docker + Kubernetes (scalable)
+kubectl apply -f k8s/production/
+
+# PM2 + Nginx (simpler)
+npm install --production
+npm run start:prod
+# Configure Nginx as reverse proxy
+```
+
+## Deployment Checklist
+
+Before deploying to production:
+
+### Security
+- [ ] Use HTTPS/TLS
+- [ ] Set strong JWT_SECRET
+- [ ] Configure CORS properly
+- [ ] Enable rate limiting
+- [ ] Set up firewall rules
+- [ ] Database authentication enabled
+- [ ] Secrets in secure vault
+- [ ] No hardcoded credentials
+
+### Performance
+- [ ] Database indexes created
+- [ ] Connection pooling enabled
+- [ ] Caching configured (Redis)
+- [ ] Gzip compression enabled
+- [ ] CDN for static files (if needed)
+- [ ] Load balancer configured
+
+### Monitoring
+- [ ] Logging configured
+- [ ] Alerting set up
+- [ ] APM tool installed
+- [ ] Uptime monitoring
+- [ ] Error tracking (Sentry)
+- [ ] Performance monitoring
+
+### Data
+- [ ] Database backups enabled
+- [ ] Backup restoration tested
+- [ ] Data retention policy
+- [ ] GDPR compliance (if needed)
+- [ ] Data encryption
+
+### Operations
+- [ ] Runbooks documented
+- [ ] On-call process established
+- [ ] Incident response plan
+- [ ] Health checks configured
+- [ ] Graceful shutdown handling
+
+## Environment-Specific Setups
+
+### Development Environment
+
+```env
+NODE_ENV=development
+PORT=3000
+MONGODB_URI=mongodb://localhost:27017/authx
+REDIS_URL=redis://localhost:6379
+LOG_LEVEL=debug
+RATE_LIMIT_ENABLED=false
+```
+
+**Command:**
+```bash
+npm run dev
+```
+
+### UAT/Staging Environment
+
+```env
+NODE_ENV=uat
+PORT=3000
+MONGODB_URI=mongodb+srv://user:pass@uat-cluster.mongodb.net/authx
+REDIS_URL=redis://uat-redis:6379
+LOG_LEVEL=info
+RATE_LIMIT_ENABLED=true
+```
+
+**Deployment:**
+```bash
+docker-compose -f docker-compose.uat.yml up -d
+```
+
+### Production Environment
+
+```env
+NODE_ENV=production
+PORT=3000
+MONGODB_URI=mongodb+srv://user:pass@prod-cluster.mongodb.net/authx
+REDIS_URL=redis://prod-redis:6379
+LOG_LEVEL=warn
+RATE_LIMIT_ENABLED=true
+BCRYPT_ROUNDS=12
+```
+
+**Deployment:**
+```bash
+# Option 1: Kubernetes
+kubectl apply -f k8s/production/
+
+# Option 2: PM2
+npm run start:prod
+```
+
+## Infrastructure Requirements
+
+### Minimum Production Setup
+
+```
+┌─────────────────────────────────────────┐
+│    Load Balancer (Nginx/HAProxy)        │
+├──────────────┬──────────────────────────┤
+│  Node.js     │    Node.js               │
+│  Instance 1  │    Instance 2            │
+├──────────────┴──────────────────────────┤
+│    MongoDB Database (Replica Set)       │
+│    Redis Cache (Cluster)                │
+└─────────────────────────────────────────┘
+```
+
+### Recommended Specs Per Instance
+
+- **CPU:** 2-4 cores
+- **RAM:** 2-4 GB
+- **Disk:** 50+ GB SSD
+- **Network:** 1 Gbps+
+
+## Cost Estimation
+
+### Monthly Cost Examples
+
+**Small (500 users):**
+- Docker on DigitalOcean: ~$50
+- MongoDB Atlas: ~$10
+- Redis Cloud: ~$15
+- **Total: ~$75/month**
+
+**Medium (50K users):**
+- Kubernetes (3 nodes): ~$300
+- MongoDB Atlas: ~$100
+- Redis Enterprise: ~$100
+- **Total: ~$500/month**
+
+**Large (1M users):**
+- Kubernetes cluster: ~$1000
+- MongoDB Atlas (sharded): ~$500
+- Redis (managed): ~$200
+- Load balancer + CDN: ~$200
+- **Total: ~$1900+/month**
+
+## Next Steps
+
+Choose your deployment method:
+
+1. **[Docker Deployment](./docker)** - Container-based deployment
+2. **[PM2 Deployment](./pm2)** - Process manager approach
+3. **[Kubernetes Deployment](./kubernetes)** - Enterprise orchestration
+
+Or proceed with:
+- **[Environment Setup](../setup/environment)** - Configure variables
+- **[Database Setup](../setup/database)** - Initialize database
+- **[Security Best Practices](../concepts/security)** - Secure your deployment
+
+## Common Deployment Tasks
+
+### Zero-Downtime Deployment
+
+```bash
+# With Kubernetes
+kubectl set image deployment/authx authx=authx:new-version
+
+# With PM2
+pm2 restart authx
+
+# With Docker Compose
+docker-compose down
+docker-compose up -d --build
+```
+
+### Rollback Strategy
+
+```bash
+# Kubernetes rollback
+kubectl rollout undo deployment/authx
+
+# PM2 with versioning
+pm2 describe authx   # Get previous versions
+pm2 restart authx
+
+# Docker rollback
+docker-compose down
+docker-compose up -d  # Pull previous image
+```
+
+### Health Checks
+
+Configure health checks for your load balancer:
+
+```javascript
+// Already implemented at /health
+GET /health
+// Returns: { status: 'ok', timestamp: '...' }
+```
+
+## Monitoring in Production
+
+Essential tools:
+
+- **Log Aggregation:** ELK Stack, Splunk, CloudWatch
+- **APM:** Datadog, New Relic, Elastic
+- **Error Tracking:** Sentry, Rollbar
+- **Uptime:** Pingdom, UptimeRobot
+- **Metrics:** Prometheus + Grafana
+
+---
+
+**Ready to deploy?** Choose your approach:
+- [Docker Guide](./docker)
+- [PM2 Guide](./pm2)
+- [Kubernetes Guide](./kubernetes)
+
+Or read [Environment Configuration](../setup/environment) first.

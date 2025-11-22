@@ -1,0 +1,151 @@
+{
+  "name": "AuthX",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#0D9488",
+    "light": "#07C983",
+    "dark": "#0D9488",
+    "background": {
+      "dark": "#090E1A"
+    }
+  },
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://github.com"
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "https://support.example.com"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "API Reference",
+      "icon": "code",
+      "url": "api-reference"
+    },
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "architecture",
+        "requirements"
+      ]
+    },
+    {
+      "group": "Core Concepts",
+      "pages": [
+        "concepts/authentication",
+        "concepts/authorization",
+        "concepts/tokens",
+        "concepts/security"
+      ]
+    },
+    {
+      "group": "Installation & Setup",
+      "pages": [
+        "setup/installation",
+        "setup/environment",
+        "setup/database",
+        "setup/configuration"
+      ]
+    },
+    {
+      "group": "Development",
+      "pages": [
+        "development/local-setup",
+        "development/running-server",
+        "development/testing",
+        "development/debugging"
+      ]
+    },
+    {
+      "group": "Authentication Endpoints",
+      "pages": [
+        "api-reference/auth/signup",
+        "api-reference/auth/login",
+        "api-reference/auth/logout",
+        "api-reference/auth/refresh-token",
+        "api-reference/auth/forgot-password",
+        "api-reference/auth/reset-password",
+        "api-reference/auth/change-password",
+        "api-reference/auth/verify-token"
+      ]
+    },
+    {
+      "group": "User Endpoints",
+      "pages": [
+        "api-reference/user/get-profile",
+        "api-reference/user/update-profile",
+        "api-reference/user/get-preferences",
+        "api-reference/user/update-preferences",
+        "api-reference/user/deactivate-account",
+        "api-reference/user/search-users"
+      ]
+    },
+    {
+      "group": "Deployment",
+      "pages": [
+        "deployment/overview",
+        "deployment/docker",
+        "deployment/pm2",
+        "deployment/kubernetes",
+        "deployment/environment-setup"
+      ]
+    },
+    {
+      "group": "Database",
+      "pages": [
+        "database/overview",
+        "database/models",
+        "database/relationships",
+        "database/migrations"
+      ]
+    },
+    {
+      "group": "Security",
+      "pages": [
+        "security/overview",
+        "security/password-security",
+        "security/token-security",
+        "security/rate-limiting",
+        "security/audit-logging"
+      ]
+    },
+    {
+      "group": "Best Practices",
+      "pages": [
+        "best-practices/error-handling",
+        "best-practices/logging",
+        "best-practices/performance",
+        "best-practices/monitoring"
+      ]
+    },
+    {
+      "group": "Troubleshooting",
+      "pages": [
+        "troubleshooting/common-issues",
+        "troubleshooting/faq",
+        "troubleshooting/debugging"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com",
+    "github": "https://github.com",
+    "linkedin": "https://linkedin.com"
+  }
+}

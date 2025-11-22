@@ -1,0 +1,64 @@
+# Get User Preferences
+
+Retrieve the authenticated user's preferences.
+
+## Endpoint
+
+```
+GET /api/v1/users/preferences
+```
+
+## Description
+
+Returns the user's saved preferences and settings.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer {accessToken}`
+</ParamField>
+
+## Response
+
+### Success (200)
+
+```json
+{
+  "success": true,
+  "message": "Preferences retrieved successfully",
+  "data": {
+    "notifications": true,
+    "emailFrequency": "daily",
+    "theme": "dark",
+    "language": "en"
+  }
+}
+```
+
+## Examples
+
+<Tabs>
+  <Tab title="cURL">
+    ```bash
+    curl http://localhost:3000/api/v1/users/preferences \
+      -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+    ```
+  </Tab>
+
+  <Tab title="JavaScript">
+    ```javascript
+    const accessToken = localStorage.getItem('accessToken');
+
+    const response = await fetch(
+      'http://localhost:3000/api/v1/users/preferences',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    const preferences = (await response.json()).data;
+    ```
+  </Tab>
+</Tabs>
