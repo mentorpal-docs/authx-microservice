@@ -1,0 +1,236 @@
+---
+title: "GitHub OAuth Login"
+description: "Authenticate users with GitHub OAuth 2.0"
+api: "GET /api/v1/auth/github"
+---
+
+## Initiate GitHub OAuth Login
+
+Redirects the user to GitHub's OAuth consent screen where they can authenticate and grant permission to access their profile.
+
+<RequestExample>
+```bash
+GET /api/v1/auth/github
+```
+</RequestExample>
+
+### Parameters
+
+None. This endpoint is accessed via browser redirect or link.
+
+### Response
+
+The user is redirected to GitHub's OAuth endpoint. After authentication, GitHub redirects to the callback URL with an authorization code.
+
+### Callback URL
+
+After successful authentication with GitHub, the browser is redirected to:
+```
+GET /api/v1/auth/github/callback?code=...&state=...
+```
+
+This endpoint automatically:
+1. Exchanges the authorization code for tokens
+2. Fetches the user's profile from GitHub
+3. Creates or updates the user in the database
+4. Generates JWT tokens
+5. Redirects to the client with tokens
+
+### Client Redirect
+
+On successful authentication, the user is redirected to:
+```
+http://localhost:3001/auth/oauth-callback?accessToken=...&refreshToken=...&provider=github
+```
+
+### Query Parameters (Callback)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| accessToken | string | JWT access token for API requests |
+| refreshToken | string | Token used to refresh access token |
+| provider | string | OAuth provider name (github) |
+
+### Error Responses
+
+#### Invalid Redirect URI
+```json
+{
+  "error": "redirect_uri_mismatch",
+  "error_description": "The redirect_uri MUST match the registered callback URL exactly"
+}
+```
+
+#### Access Denied
+```json
+{
+  "error": "access_denied",
+  "error_description": "The user denied access"
+}
+```
+
+#### Invalid Client
+```json
+{
+  "error": "bad_verification_code",
+  "error_description": "The code passed is incorrect or expired"
+}
+```
+
+## User Data Extracted from GitHub
+
+When a user authenticates with GitHub, the following information is extracted:
+
+| Field | Source | Usage |
+|-------|--------|-------|
+| ID | `profile.id` | Social ID (stored in database) |
+| Email | `profile.emails[0].value` | User email |
+| Username | `profile.displayName` | GitHub username |
+| Avatar | `profile.photos[0].value` | Profile picture URL |
+
+## Example Implementation
+
+### React
+
+```jsx
+function GitHubSignInButton() {
+  const handleGitHubLogin = () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/github';
+  };
+
+  return (
+    <button onClick={handleGitHubLogin} className="btn btn-github">
+      Sign in with GitHub
+    </button>
+  );
+}
+```
+
+### HTML/JavaScript
+
+```html
+<a href="http://localhost:3000/api/v1/auth/github" class="btn btn-github">
+  Sign in with GitHub
+</a>
+```
+
+## Prerequisites
+
+1. **GitHub OAuth Credentials**
+   - Go to [GitHub Developer Settings](https://github.com/settings/developers)
+   - Create new OAuth App
+   - Copy Client ID and Client Secret
+
+2. **Environment Variables**
+   ```env
+   GITHUB_CLIENT_ID=your-client-id
+   GITHUB_CLIENT_SECRET=your-client-secret
+   GITHUB_CALLBACK_URL=http://localhost:3000/api/v1/auth/github/callback
+   ```
+
+3. **Authorization Callback URL**
+   - Register callback URL in GitHub OAuth App:
+   ```
+   http://localhost:3000/api/v1/auth/github/callback
+   ```
+
+## Scopes Requested
+
+The following GitHub OAuth scopes are requested:
+- `user:email` - Access to user's email addresses
+
+## Important Notes
+
+1. **Public Email Required**
+   - GitHub OAuth only returns public email
+   - User must have a public email set on GitHub profile
+   - Go to GitHub Settings → Email to make email public
+
+2. **Email Requirement**
+   - If user's GitHub email is private, authentication will fail
+   - Ask user to make email public before retrying
+
+3. **Callback URL**
+   - Must match exactly (protocol, domain, path)
+   - Cannot use localhost for production
+
+## Example Implementation (Complete Flow)
+
+### React Component
+
+```jsx
+import React from 'react';
+
+function GitHubLogin() {
+  const handleLogin = () => {
+    // Redirect to OAuth endpoint
+    window.location.href = 'http://localhost:3000/api/v1/auth/github';
+  };
+
+  return (
+    <div className="login-page">
+      <h1>Sign In to AuthX</h1>
+      <button onClick={handleLogin} className="github-btn">
+        Sign in with GitHub
+      </button>
+    </div>
+  );
+}
+
+export default GitHubLogin;
+```
+
+### OAuth Callback Page
+
+```jsx
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+function OAuthCallback() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get('accessToken');
+    const refreshToken = params.get('refreshToken');
+    const error = params.get('error');
+
+    if (error) {
+      // Handle error
+      console.error('GitHub OAuth error:', error);
+      navigate('/login?error=' + error);
+      return;
+    }
+
+    if (accessToken && refreshToken) {
+      // Store tokens securely
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
+
+      // Redirect to dashboard
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  return <div>Processing GitHub login...</div>;
+}
+
+export default OAuthCallback;
+```
+
+## Troubleshooting
+
+### Email Not Found
+**Issue**: User's email address is private on GitHub  
+**Solution**: Ask user to make their GitHub email public
+
+### Redirect URI Mismatch
+**Issue**: Callback URL doesn't match GitHub app settings  
+**Solution**: Update GitHub OAuth app settings with correct callback URL
+
+### Bad Verification Code
+**Issue**: Authorization code is invalid or expired  
+**Solution**: User should try logging in again (authorization codes expire after 10 minutes)
+

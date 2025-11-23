@@ -1,0 +1,194 @@
+---
+title: "Social Login & OAuth 2.0"
+description: "Learn about OAuth 2.0 implementation and social login features in AuthX"
+---
+
+## Overview
+
+AuthX supports OAuth 2.0 authentication with multiple social providers, allowing users to log in using their existing accounts from popular platforms.
+
+### Supported Providers
+
+- **Google OAuth 2.0**
+- **Facebook OAuth 2.0**
+- **GitHub OAuth 2.0**
+
+## How OAuth 2.0 Works
+
+OAuth 2.0 is an authorization framework that enables applications to obtain limited access to user accounts on an HTTP service. Instead of sharing passwords, users authorize the application to access their profile information.
+
+### OAuth Flow Diagram
+
+```
+┌─────────────┐
+│   Client    │
+│  (Browser)  │
+└──────┬──────┘
+       │ 1. User clicks "Sign in with Google"
+       ▼
+┌──────────────────────────────────────┐
+│  GET /api/v1/auth/google             │
+│  (Redirect to OAuth Provider)        │
+└──────┬───────────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────┐
+│  OAuth Provider (Google)     │
+│  User authenticates & grants │
+│  permission                  │
+└──────┬───────────────────────┘
+       │
+       │ 2. Authorization Code
+       ▼
+┌──────────────────────────────────┐
+│  GET /auth/{provider}/callback   │
+│  Code exchange for tokens        │
+└──────┬───────────────────────────┘
+       │
+       ▼
+┌──────────────────────────────┐
+│  AuthX Server                │
+│  - Validate authorization    │
+│  - Fetch user profile        │
+│  - Create/Update user        │
+│  - Generate JWT tokens       │
+└──────┬───────────────────────┘
+       │
+       │ 3. JWT Tokens
+       ▼
+┌──────────────────────────────┐
+│  Client OAuth Callback       │
+│  /auth/oauth-callback        │
+│  - Store tokens              │
+│  - Redirect to dashboard     │
+└──────────────────────────────┘
+```
+
+## Key Concepts
+
+### Access Token
+A short-lived token (typically 1 hour) that grants access to protected resources. Must be included in the `Authorization` header for API requests.
+
+### Refresh Token
+A long-lived token used to obtain a new access token when the current one expires. Should be stored securely on the client or server.
+
+### OAuth Provider
+The service that handles user authentication (Google, Facebook, GitHub). Users log in with their provider credentials.
+
+### Social ID
+The unique identifier assigned by the OAuth provider for each user (e.g., Google User ID, Facebook User ID).
+
+### Account Linking
+The process of connecting a social OAuth account to an existing user account. Users can link multiple social providers to a single account.
+
+## Security Considerations
+
+### 1. State Parameter
+OAuth uses a "state" parameter to prevent CSRF attacks. This parameter is automatically managed by Passport.js.
+
+### 2. Secure Callback URLs
+All callback URLs must be registered with the OAuth provider and match exactly (including protocol, domain, and path).
+
+### 3. Token Security
+- Access tokens should not be stored in `localStorage` if highly sensitive
+- Use `httpOnly` cookies for better security
+- Never expose tokens in URLs
+- Always use HTTPS in production
+
+### 4. Email Verification
+OAuth providers typically verify user emails, so users authenticated via OAuth are automatically considered email-verified.
+
+## User Creation & Account Linking
+
+### Automatic User Creation
+When a user logs in via OAuth for the first time:
+1. System checks if user exists by email
+2. If not found, creates new user account
+3. Links social provider information
+4. Marks email as verified
+
+### Email-based Linking
+If user signs up with email/password first, then logs in with OAuth:
+1. System finds existing user by email
+2. Links social provider to existing account
+3. User can now use both authentication methods
+
+### Multiple Provider Linking
+Users can link multiple OAuth providers to one account, allowing flexible login options.
+
+## Session Management
+
+### Server-side Session
+A session ID is stored in an `httpOnly` cookie after successful OAuth authentication.
+
+### Passport Serialization
+```javascript
+// User is serialized to session
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+// User is deserialized from session
+passport.deserializeUser(async (id, done) => {
+  const user = await User.findById(id);
+  done(null, user);
+});
+```
+
+## Provider-specific Details
+
+### Google OAuth
+- **Scopes**: `profile`, `email`
+- **Profile Fields**: ID, display name, email, photo URL
+- **Email Verification**: Automatic
+- **Multi-account Support**: Users can select which Google account to use
+
+### Facebook OAuth
+- **Scopes**: `public_profile`, `email`
+- **Profile Fields**: ID, display name, email, photo URL
+- **Email Verification**: Automatic
+- **Requirements**: App must be in development or live mode
+
+### GitHub OAuth
+- **Scopes**: `user:email`
+- **Profile Fields**: ID, username, email, avatar URL
+- **Email Verification**: Automatic
+- **Requirements**: User must have public email set on GitHub
+
+## Linked Accounts Management
+
+### View Linked Accounts
+Users can see which OAuth providers are linked to their account.
+
+### Unlink Account
+Users can remove OAuth provider links, but must ensure they have a password set as an alternative authentication method.
+
+### Link New Account
+Users can add new OAuth providers to their existing account.
+
+## Error Handling
+
+### Common OAuth Errors
+- **Invalid Redirect URI**: Callback URL doesn't match registered URL
+- **Access Denied**: User denied permission or closed OAuth dialog
+- **Server Error**: OAuth provider returned error (temporary outage)
+- **Invalid Credentials**: Client ID or Secret is incorrect
+
+### Client-side Handling
+The system redirects users to `/auth/oauth-callback` with query parameters:
+- `accessToken`: JWT access token
+- `refreshToken`: Refresh token
+- `provider`: OAuth provider used (google, facebook, github)
+- `error`: Error code if authentication failed
+
+## Best Practices
+
+1. **Always use HTTPS** in production for OAuth
+2. **Register all callback URLs** with OAuth providers
+3. **Keep secrets secure** - Never expose Client Secret
+4. **Implement token refresh** for long sessions
+5. **Log OAuth events** for security auditing
+6. **Validate user data** from OAuth providers
+7. **Require password for sensitive operations** if only OAuth linked
+8. **Provide account recovery options** for locked accounts
+

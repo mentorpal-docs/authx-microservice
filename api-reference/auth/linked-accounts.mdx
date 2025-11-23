@@ -1,0 +1,340 @@
+---
+title: "Get Linked Accounts"
+description: "Retrieve list of social OAuth accounts linked to user profile"
+api: "GET /api/v1/auth/linked-accounts"
+---
+
+## Get Linked Social Accounts
+
+Retrieves a list of all OAuth providers currently linked to the authenticated user's account, along with account authentication status.
+
+<RequestExample>
+```bash
+curl -X GET http://localhost:3000/api/v1/auth/linked-accounts \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+</RequestExample>
+
+### Authentication
+
+**Required**: Yes  
+**Type**: Bearer Token (JWT)
+
+Include your JWT access token in the Authorization header:
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Parameters
+
+None. This endpoint takes no parameters.
+
+### Response
+
+#### Success Response
+```json
+{
+  "success": true,
+  "message": "Linked accounts retrieved successfully",
+  "data": {
+    "email": "user@example.com",
+    "hasPassword": true,
+    "linkedAccounts": [
+      "google",
+      "facebook"
+    ]
+  }
+}
+```
+
+#### Success Response - No Linked Accounts
+```json
+{
+  "success": true,
+  "message": "Linked accounts retrieved successfully",
+  "data": {
+    "email": "user@example.com",
+    "hasPassword": true,
+    "linkedAccounts": []
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| email | string | User's email address |
+| hasPassword | boolean | Whether user has password set (alternative auth method) |
+| linkedAccounts | array | List of linked OAuth providers: `google`, `facebook`, `github` |
+
+### Error Responses
+
+#### 401 Unauthorized
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required"
+  }
+}
+```
+
+#### 404 Not Found
+```json
+{
+  "success": false,
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "User not found"
+  }
+}
+```
+
+## Use Cases
+
+### 1. Display Account Settings
+Show user which OAuth providers are linked:
+```bash
+GET /api/v1/auth/linked-accounts
+Authorization: Bearer <jwt>
+```
+
+Response:
+```json
+{
+  "email": "john@example.com",
+  "hasPassword": true,
+  "linkedAccounts": ["google", "github"]
+}
+```
+
+### 2. Check Authentication Status
+Determine if user can unlink accounts:
+```javascript
+const response = await getLinkedAccounts();
+
+if (response.linkedAccounts.length === 1 && !response.hasPassword) {
+  // User can't unlink their only auth method
+  showWarning("Set a password before unlinking OAuth");
+} else {
+  // User can safely unlink
+  showUnlinkButton();
+}
+```
+
+### 3. Display Available OAuth Providers
+Show which providers are available to link:
+```javascript
+const linkedAccounts = ['google', 'facebook'];
+const availableProviders = ['google', 'facebook', 'github']
+  .filter(p => !linkedAccounts.includes(p));
+// availableProviders = ['github']
+```
+
+## Implementation Example
+
+### React Component - Account Management
+
+```jsx
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+
+function AccountManagement() {
+  const [linkedAccounts, setLinkedAccounts] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchLinkedAccounts();
+  }, []);
+
+  const fetchLinkedAccounts = async () => {
+    try {
+      const response = await axios.get(
+        'http://localhost:3000/api/v1/auth/linked-accounts',
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      );
+      setLinkedAccounts(response.data.data);
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to fetch accounts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div className="error">{error}</div>;
+
+  return (
+    <div className="account-management">
+      <h2>Account Settings</h2>
+      
+      <section className="account-info">
+        <h3>Account Information</h3>
+        <p><strong>Email:</strong> {linkedAccounts?.email}</p>
+        <p><strong>Password Set:</strong> {linkedAccounts?.hasPassword ? 'Yes' : 'No'}</p>
+      </section>
+
+      <section className="linked-accounts">
+        <h3>Connected OAuth Accounts</h3>
+        
+        {linkedAccounts?.linkedAccounts?.length === 0 ? (
+          <p>No OAuth accounts linked. Link one below:</p>
+        ) : (
+          <ul>
+            {linkedAccounts?.linkedAccounts?.map((provider) => (
+              <li key={provider}>
+                <span>{provider.charAt(0).toUpperCase() + provider.slice(1)}</span>
+                <button 
+                  onClick={() => unlinkAccount(provider)}
+                  className="unlink-btn"
+                >
+                  Unlink
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="available-providers">
+        <h3>Available Providers</h3>
+        <div className="provider-buttons">
+          {!linkedAccounts?.linkedAccounts?.includes('google') && (
+            <button className="btn-google">Link Google</button>
+          )}
+          {!linkedAccounts?.linkedAccounts?.includes('facebook') && (
+            <button className="btn-facebook">Link Facebook</button>
+          )}
+          {!linkedAccounts?.linkedAccounts?.includes('github') && (
+            <button className="btn-github">Link GitHub</button>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default AccountManagement;
+```
+
+### React Hook for Linked Accounts
+
+```jsx
+import axios from 'axios';
+import { useState, useCallback } from 'react';
+
+function useLinkedAccounts() {
+  const [linkedAccounts, setLinkedAccounts] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        'http://localhost:3000/api/v1/auth/linked-accounts',
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      );
+      setLinkedAccounts(response.data.data);
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.error?.message);
+      setLinkedAccounts(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const isLinked = useCallback((provider) => {
+    return linkedAccounts?.linkedAccounts?.includes(provider) || false;
+  }, [linkedAccounts]);
+
+  const canUnlink = useCallback((provider) => {
+    if (!isLinked(provider)) return false;
+    if (linkedAccounts?.linkedAccounts?.length === 1 && !linkedAccounts?.hasPassword) {
+      return false;
+    }
+    return true;
+  }, [linkedAccounts, isLinked]);
+
+  return {
+    linkedAccounts,
+    loading,
+    error,
+    fetch,
+    isLinked,
+    canUnlink
+  };
+}
+
+export default useLinkedAccounts;
+```
+
+## Display Patterns
+
+### Pattern 1: Account Status Dashboard
+
+```jsx
+<div className="account-dashboard">
+  <div className="status-card">
+    <h4>Email</h4>
+    <p>{linkedAccounts.email}</p>
+  </div>
+
+  <div className="status-card">
+    <h4>Authentication Methods</h4>
+    {linkedAccounts.hasPassword && <badge>Password</badge>}
+    {linkedAccounts.linkedAccounts.map(p => <badge key={p}>{p}</badge>)}
+  </div>
+</div>
+```
+
+### Pattern 2: Provider Grid
+
+```jsx
+<div className="provider-grid">
+  {['google', 'facebook', 'github'].map(provider => (
+    <div key={provider} className="provider-card">
+      <h4>{provider}</h4>
+      {isLinked(provider) ? (
+        <>
+          <p>✓ Linked</p>
+          <button onClick={() => unlink(provider)}>Unlink</button>
+        </>
+      ) : (
+        <>
+          <p>Not linked</p>
+          <button onClick={() => link(provider)}>Link</button>
+        </>
+      )}
+    </div>
+  ))}
+</div>
+```
+
+## Security Considerations
+
+1. **User Privacy**: Only show linked accounts to the authenticated user
+2. **Access Control**: Requires JWT authentication
+3. **Audit Trail**: Track when accounts are linked/unlinked
+4. **Account Recovery**: Know all auth methods available for recovery
+
+## Notes
+
+- Returns current state of linked OAuth accounts
+- Information is read-only from this endpoint
+- Use `POST /api/v1/auth/link-social` to link accounts
+- Use `DELETE /api/v1/auth/unlink-social/{provider}` to unlink accounts
+

@@ -1,0 +1,199 @@
+---
+title: "Link Social Account"
+description: "Link a social OAuth account to existing user account"
+api: "POST /api/v1/auth/link-social"
+---
+
+## Link OAuth Account to User
+
+Links a social OAuth provider (Google, Facebook, GitHub) to an existing authenticated user account. This allows users to have multiple login methods for the same account.
+
+<RequestExample>
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/link-social \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "google",
+    "socialId": "1234567890"
+  }'
+```
+</RequestExample>
+
+### Authentication
+
+**Required**: Yes  
+**Type**: Bearer Token (JWT)
+
+Include your JWT access token in the Authorization header:
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Request Body
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| provider | string | Yes | OAuth provider: `google`, `facebook`, or `github` |
+| socialId | string | Yes | Unique ID from OAuth provider |
+
+### Request Example
+
+```json
+{
+  "provider": "google",
+  "socialId": "118367310515159273512"
+}
+```
+
+### Response
+
+#### Success Response
+```json
+{
+  "success": true,
+  "message": "google account linked successfully",
+  "data": {
+    "id": "user_id_123",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "socialProvider": "google",
+    "socialId": "118367310515159273512",
+    "profilePicture": "https://...",
+    "role": "user",
+    "isEmailVerified": true,
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-20T15:45:00Z"
+  }
+}
+```
+
+### Error Responses
+
+#### 401 Unauthorized
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required"
+  }
+}
+```
+
+#### 400 Bad Request - Invalid Provider
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_PROVIDER",
+    "message": "Provider must be one of: google, facebook, github"
+  }
+}
+```
+
+#### 400 Bad Request - Account Already Linked
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ACCOUNT_ALREADY_LINKED",
+    "message": "This google account is already linked to another user"
+  }
+}
+```
+
+#### 404 Not Found
+```json
+{
+  "success": false,
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "User not found"
+  }
+}
+```
+
+## Use Cases
+
+### 1. User Sign-up to Account Linking
+User signs up with email/password, then wants to link a social account:
+```json
+{
+  "provider": "facebook",
+  "socialId": "1234567890"
+}
+```
+
+### 2. Multiple Social Providers
+Link multiple social providers to same account:
+```json
+{
+  "provider": "github",
+  "socialId": "9876543210"
+}
+```
+
+## Implementation Example
+
+### React Component
+
+```jsx
+import axios from 'axios';
+import { useState } from 'react';
+
+function LinkSocialAccount() {
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLinkGoogle = async () => {
+    try {
+      const response = await axios.post(
+        'http://localhost:3000/api/v1/auth/link-social',
+        {
+          provider: 'google',
+          socialId: 'USER_GOOGLE_ID' // Get from OAuth provider
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      );
+
+      setMessage('Google account linked successfully');
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.error?.message || 'Failed to link account');
+      setMessage('');
+    }
+  };
+
+  return (
+    <div className="link-account">
+      <h3>Link Social Accounts</h3>
+      {message && <p className="success">{message}</p>}
+      {error && <p className="error">{error}</p>}
+      <button onClick={handleLinkGoogle}>Link Google Account</button>
+    </div>
+  );
+}
+
+export default LinkSocialAccount;
+```
+
+## Security Considerations
+
+1. **Endpoint Protection**: This endpoint requires authentication (JWT token)
+2. **Social ID Validation**: Verify social ID is valid for provider
+3. **Account Uniqueness**: Cannot link same social account to multiple users
+4. **Authorization**: Only authenticated user can link to their own account
+
+## Notes
+
+- User must be authenticated (have valid JWT token)
+- Each social account can only be linked to one user
+- User can have multiple social providers linked
+- Linking does not change password or other account details
+

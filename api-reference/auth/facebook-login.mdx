@@ -1,0 +1,161 @@
+---
+title: "Facebook OAuth Login"
+description: "Authenticate users with Facebook OAuth 2.0"
+api: "GET /api/v1/auth/facebook"
+---
+
+## Initiate Facebook OAuth Login
+
+Redirects the user to Facebook's OAuth consent screen where they can authenticate and grant permission to access their profile.
+
+<RequestExample>
+```bash
+GET /api/v1/auth/facebook
+```
+</RequestExample>
+
+### Parameters
+
+None. This endpoint is accessed via browser redirect or link.
+
+### Response
+
+The user is redirected to Facebook's OAuth endpoint. After authentication, Facebook redirects to the callback URL with an authorization code.
+
+### Callback URL
+
+After successful authentication with Facebook, the browser is redirected to:
+```
+GET /api/v1/auth/facebook/callback?code=...&state=...
+```
+
+This endpoint automatically:
+1. Exchanges the authorization code for tokens
+2. Fetches the user's profile from Facebook
+3. Creates or updates the user in the database
+4. Generates JWT tokens
+5. Redirects to the client with tokens
+
+### Client Redirect
+
+On successful authentication, the user is redirected to:
+```
+http://localhost:3001/auth/oauth-callback?accessToken=...&refreshToken=...&provider=facebook
+```
+
+### Query Parameters (Callback)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| accessToken | string | JWT access token for API requests |
+| refreshToken | string | Token used to refresh access token |
+| provider | string | OAuth provider name (facebook) |
+
+### Error Responses
+
+#### Invalid Redirect URI
+```json
+{
+  "error": "redirect_uri_mismatch",
+  "error_description": "The redirect URI in the request does not match the registered redirect URI"
+}
+```
+
+#### Access Denied
+```json
+{
+  "error": "access_denied",
+  "error_description": "The user denied access"
+}
+```
+
+#### Invalid App ID
+```json
+{
+  "error": "invalid_client_id",
+  "error_description": "The app ID provided is invalid"
+}
+```
+
+## User Data Extracted from Facebook
+
+When a user authenticates with Facebook, the following information is extracted:
+
+| Field | Source | Usage |
+|-------|--------|-------|
+| ID | `profile.id` | Social ID (stored in database) |
+| Email | `profile.emails[0].value` | User email |
+| Name | `profile.displayName` | First and last name |
+| Picture | `profile.photos[0].value` | Profile picture URL |
+
+## Example Implementation
+
+### React
+
+```jsx
+function FacebookSignInButton() {
+  const handleFacebookLogin = () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/facebook';
+  };
+
+  return (
+    <button onClick={handleFacebookLogin} className="btn btn-facebook">
+      Sign in with Facebook
+    </button>
+  );
+}
+```
+
+### HTML/JavaScript
+
+```html
+<a href="http://localhost:3000/api/v1/auth/facebook" class="btn btn-facebook">
+  Sign in with Facebook
+</a>
+```
+
+## Prerequisites
+
+1. **Facebook OAuth Credentials**
+   - Go to [Facebook Developers](https://developers.facebook.com)
+   - Create an app and enable Facebook Login
+   - Copy App ID and App Secret
+
+2. **Environment Variables**
+   ```env
+   FACEBOOK_APP_ID=your-app-id
+   FACEBOOK_APP_SECRET=your-app-secret
+   FACEBOOK_CALLBACK_URL=http://localhost:3000/api/v1/auth/facebook/callback
+   ```
+
+3. **Valid OAuth Redirect URIs**
+   - Register callback URL in Facebook App Settings:
+   ```
+   http://localhost:3000/api/v1/auth/facebook/callback
+   ```
+
+## Scopes Requested
+
+The following Facebook OAuth scopes are requested:
+- `public_profile` - Access to user's public profile information
+- `email` - Access to user's email address
+
+## Application Status
+
+The Facebook app must be in one of these statuses:
+- **Development** - For testing (limited users)
+- **Live** - For production (all users)
+
+To add test users in Development mode:
+1. Go to Facebook App Settings
+2. Navigate to Roles → Test Users
+3. Add test user accounts
+
+## Notes
+
+- This endpoint must be accessed from a browser (not from API client)
+- Callback URL must match exactly (protocol, domain, path)
+- HTTPS is required in production
+- Users are automatically logged in after successful authentication
+- Email is required from Facebook users for account creation
+

@@ -1,0 +1,1234 @@
+---
+title: "Frontend Social Login Implementation"
+description: "Complete guide to implement social OAuth login on the client side with React, Vue, and vanilla JavaScript"
+---
+
+## Frontend Social Login Implementation Guide
+
+This guide shows you how to implement social OAuth login on the frontend using React, Vue 3, and vanilla JavaScript.
+
+## Prerequisites
+
+- Backend OAuth endpoints running (see API Reference)
+- OAuth credentials configured (Google, Facebook, GitHub)
+- Node.js and npm/yarn installed
+- Basic understanding of authentication flows
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│              Frontend Application                     │
+│  (React / Vue / Vanilla JS)                          │
+└─────────────────────────────────────────────────────┘
+                        ↓
+        User clicks "Login with Google"
+                        ↓
+┌─────────────────────────────────────────────────────┐
+│          Backend OAuth Endpoints                      │
+│  GET /api/v1/auth/google                            │
+│  GET /api/v1/auth/facebook                          │
+│  GET /api/v1/auth/github                            │
+└─────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────┐
+│       OAuth Provider (Google/Facebook/GitHub)        │
+│              User Authorization                      │
+└─────────────────────────────────────────────────────┘
+                        ↓
+         Redirect back to /callback
+                        ↓
+┌─────────────────────────────────────────────────────┐
+│     Backend Processes Callback & Returns JWT         │
+└─────────────────────────────────────────────────────┘
+                        ↓
+         Frontend stores JWT & redirects home
+```
+
+## React Implementation
+
+### 1. Setup OAuth Buttons Component
+
+```jsx
+// components/OAuthButtons.jsx
+import React from 'react';
+import { FcGoogle } from 'react-icons/fc';
+import { FaFacebook, FaGithub } from 'react-icons/fa';
+
+function OAuthButtons() {
+  const handleGoogleLogin = () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/google';
+  };
+
+  const handleFacebookLogin = () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/facebook';
+  };
+
+  const handleGitHubLogin = () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/github';
+  };
+
+  return (
+    <div className="oauth-buttons">
+      <button onClick={handleGoogleLogin} className="oauth-btn google-btn">
+        <FcGoogle /> Sign in with Google
+      </button>
+      <button onClick={handleFacebookLogin} className="oauth-btn facebook-btn">
+        <FaFacebook /> Sign in with Facebook
+      </button>
+      <button onClick={handleGitHubLogin} className="oauth-btn github-btn">
+        <FaGithub /> Sign in with GitHub
+      </button>
+    </div>
+  );
+}
+
+export default OAuthButtons;
+```
+
+### 2. OAuth Callback Handler Component
+
+Create a callback page to handle redirects from OAuth providers:
+
+```jsx
+// pages/auth/OAuthCallback.jsx
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+
+function OAuthCallback() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { setUser, setToken } = useAuth();
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const error = searchParams.get('error');
+
+    if (error) {
+      setError(decodeURIComponent(error));
+      setLoading(false);
+      return;
+    }
+
+    if (token) {
+      try {
+        // Store token
+        localStorage.setItem('accessToken', token);
+        setToken(token);
+
+        // Fetch user profile
+        fetchUserProfile(token);
+      } catch (err) {
+        setError('Failed to process login');
+        setLoading(false);
+      }
+    }
+  }, [searchParams]);
+
+  const fetchUserProfile = async (token) => {
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/v1/user/profile',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData.data);
+        navigate('/dashboard');
+      } else {
+        setError('Failed to fetch user profile');
+      }
+    } catch (err) {
+      setError('An error occurred during login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="loading">Processing your login...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="error-container">
+        <h2>Login Error</h2>
+        <p>{error}</p>
+        <a href="/login">Back to Login</a>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+export default OAuthCallback;
+```
+
+### 3. Login Page with OAuth Options
+
+```jsx
+// pages/auth/LoginPage.jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import OAuthButtons from '../../components/OAuthButtons';
+import EmailLogin from '../../components/EmailLogin';
+
+function LoginPage() {
+  const [activeTab, setActiveTab] = useState('oauth'); // 'oauth' or 'email'
+
+  return (
+    <div className="login-page">
+      <div className="login-container">
+        <h1>Welcome Back</h1>
+        
+        <div className="login-tabs">
+          <button
+            className={`tab ${activeTab === 'oauth' ? 'active' : ''}`}
+            onClick={() => setActiveTab('oauth')}
+          >
+            Social Login
+          </button>
+          <button
+            className={`tab ${activeTab === 'email' ? 'active' : ''}`}
+            onClick={() => setActiveTab('email')}
+          >
+            Email Login
+          </button>
+        </div>
+
+        {activeTab === 'oauth' ? (
+          <div className="oauth-section">
+            <p>Sign in with your preferred provider</p>
+            <OAuthButtons />
+          </div>
+        ) : (
+          <EmailLogin />
+        )}
+
+        <div className="divider">OR</div>
+
+        <p className="signup-text">
+          Don't have an account? <a href="/signup">Sign up here</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default LoginPage;
+```
+
+### 4. Router Configuration
+
+```jsx
+// App.jsx
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LoginPage from './pages/auth/LoginPage';
+import OAuthCallback from './pages/auth/OAuthCallback';
+import Dashboard from './pages/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback" element={<OAuthCallback />} />
+        
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
+```
+
+### 5. Auth Context for State Management
+
+```jsx
+// context/AuthContext.jsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if token exists in localStorage
+    const storedToken = localStorage.getItem('accessToken');
+    if (storedToken) {
+      setToken(storedToken);
+      // Optionally fetch user data
+      fetchUserProfile(storedToken);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchUserProfile = async (token) => {
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/v1/user/profile',
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    setUser(null);
+    setToken(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, loading, setUser, setToken, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+}
+```
+
+### 6. Protected Route Component
+
+```jsx
+// components/ProtectedRoute.jsx
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+function ProtectedRoute({ children }) {
+  const { token, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+export default ProtectedRoute;
+```
+
+### 7. Account Settings with Linked Accounts
+
+```jsx
+// pages/AccountSettings.jsx
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+
+function AccountSettings() {
+  const { token } = useAuth();
+  const [linkedAccounts, setLinkedAccounts] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchLinkedAccounts();
+  }, []);
+
+  const fetchLinkedAccounts = async () => {
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/v1/auth/linked-accounts',
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setLinkedAccounts(data.data);
+      } else {
+        setError('Failed to fetch linked accounts');
+      }
+    } catch (err) {
+      setError('An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkAccount = (provider) => {
+    window.location.href = `http://localhost:3000/api/v1/auth/${provider}`;
+  };
+
+  const handleUnlinkAccount = async (provider) => {
+    if (!window.confirm(`Are you sure you want to unlink ${provider}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/v1/auth/unlink-social/${provider}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.ok) {
+        fetchLinkedAccounts();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error?.message || 'Failed to unlink account');
+      }
+    } catch (err) {
+      setError('An error occurred');
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div className="account-settings">
+      <h2>Account Settings</h2>
+
+      <section className="linked-accounts">
+        <h3>Connected Social Accounts</h3>
+        
+        {error && <div className="error">{error}</div>}
+
+        <div className="provider-list">
+          {['google', 'facebook', 'github'].map((provider) => (
+            <div key={provider} className="provider-card">
+              <div className="provider-info">
+                <h4>{provider.charAt(0).toUpperCase() + provider.slice(1)}</h4>
+                {linkedAccounts?.linkedAccounts?.includes(provider) ? (
+                  <>
+                    <p className="status">✓ Connected</p>
+                    <button
+                      onClick={() => handleUnlinkAccount(provider)}
+                      className="btn-unlink"
+                    >
+                      Disconnect
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="status">Not connected</p>
+                    <button
+                      onClick={() => handleLinkAccount(provider)}
+                      className="btn-link"
+                    >
+                      Connect
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default AccountSettings;
+```
+
+## Vue 3 Implementation
+
+### 1. OAuth Buttons Component (Vue)
+
+```vue
+<!-- components/OAuthButtons.vue -->
+<template>
+  <div class="oauth-buttons">
+    <button @click="handleGoogleLogin" class="oauth-btn google-btn">
+      <img src="@/assets/google-icon.svg" alt="Google" />
+      Sign in with Google
+    </button>
+    <button @click="handleFacebookLogin" class="oauth-btn facebook-btn">
+      <img src="@/assets/facebook-icon.svg" alt="Facebook" />
+      Sign in with Facebook
+    </button>
+    <button @click="handleGitHubLogin" class="oauth-btn github-btn">
+      <img src="@/assets/github-icon.svg" alt="GitHub" />
+      Sign in with GitHub
+    </button>
+  </div>
+</template>
+
+<script setup>
+const handleGoogleLogin = () => {
+  window.location.href = 'http://localhost:3000/api/v1/auth/google';
+};
+
+const handleFacebookLogin = () => {
+  window.location.href = 'http://localhost:3000/api/v1/auth/facebook';
+};
+
+const handleGitHubLogin = () => {
+  window.location.href = 'http://localhost:3000/api/v1/auth/github';
+};
+</script>
+
+<style scoped>
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oauth-btn {
+  padding: 12px 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s;
+}
+
+.oauth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.google-btn {
+  background: white;
+  color: #333;
+}
+
+.facebook-btn {
+  background: #1877f2;
+  color: white;
+}
+
+.github-btn {
+  background: #333;
+  color: white;
+}
+
+img {
+  width: 20px;
+  height: 20px;
+}
+</style>
+```
+
+### 2. OAuth Callback Handler (Vue)
+
+```vue
+<!-- views/OAuthCallback.vue -->
+<template>
+  <div class="oauth-callback">
+    <div v-if="loading" class="loading">
+      <p>Processing your login...</p>
+    </div>
+
+    <div v-else-if="error" class="error-container">
+      <h2>Login Error</h2>
+      <p>{{ error }}</p>
+      <router-link to="/login">Back to Login</router-link>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+const loading = ref(true);
+const error = ref(null);
+
+onMounted(async () => {
+  const token = route.query.token;
+  const errorMsg = route.query.error;
+
+  if (errorMsg) {
+    error.value = decodeURIComponent(errorMsg);
+    loading.value = false;
+    return;
+  }
+
+  if (token) {
+    try {
+      localStorage.setItem('accessToken', token);
+      await authStore.setToken(token);
+      await authStore.fetchUserProfile();
+      router.push('/dashboard');
+    } catch (err) {
+      error.value = 'Failed to process login';
+    } finally {
+      loading.value = false;
+    }
+  }
+});
+</script>
+
+<style scoped>
+.loading,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.error-container {
+  color: #d32f2f;
+}
+</style>
+```
+
+### 3. Auth Store (Pinia)
+
+```javascript
+// stores/auth.js
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref(null);
+  const token = ref(localStorage.getItem('accessToken'));
+  const loading = ref(false);
+
+  const setToken = (newToken) => {
+    token.value = newToken;
+    localStorage.setItem('accessToken', newToken);
+  };
+
+  const fetchUserProfile = async () => {
+    if (!token.value) return;
+    
+    try {
+      loading.value = true;
+      const response = await fetch(
+        'http://localhost:3000/api/v1/user/profile',
+        {
+          headers: { Authorization: `Bearer ${token.value}` }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        user.value = data.data;
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const logout = () => {
+    user.value = null;
+    token.value = null;
+    localStorage.removeItem('accessToken');
+  };
+
+  return {
+    user,
+    token,
+    loading,
+    setToken,
+    fetchUserProfile,
+    logout
+  };
+});
+```
+
+### 4. Account Settings (Vue)
+
+```vue
+<!-- views/AccountSettings.vue -->
+<template>
+  <div class="account-settings">
+    <h2>Account Settings</h2>
+
+    <section class="linked-accounts">
+      <h3>Connected Social Accounts</h3>
+
+      <div v-if="error" class="error">{{ error }}</div>
+
+      <div v-if="loading" class="loading">Loading...</div>
+
+      <div v-else class="provider-grid">
+        <div v-for="provider in providers" :key="provider" class="provider-card">
+          <h4>{{ capitalizeProvider(provider) }}</h4>
+          <p v-if="isLinked(provider)" class="status">✓ Connected</p>
+          <p v-else class="status">Not connected</p>
+          <button
+            v-if="isLinked(provider)"
+            @click="handleUnlink(provider)"
+            class="btn-unlink"
+          >
+            Disconnect
+          </button>
+          <button
+            v-else
+            @click="handleLink(provider)"
+            class="btn-link"
+          >
+            Connect
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+
+const authStore = useAuthStore();
+const linkedAccounts = ref(null);
+const loading = ref(true);
+const error = ref(null);
+const providers = ['google', 'facebook', 'github'];
+
+const isLinked = (provider) => {
+  return linkedAccounts.value?.linkedAccounts?.includes(provider) || false;
+};
+
+const capitalizeProvider = (provider) => {
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+};
+
+const fetchLinkedAccounts = async () => {
+  try {
+    const response = await fetch(
+      'http://localhost:3000/api/v1/auth/linked-accounts',
+      {
+        headers: { Authorization: `Bearer ${authStore.token}` }
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      linkedAccounts.value = data.data;
+    } else {
+      error.value = 'Failed to fetch linked accounts';
+    }
+  } catch (err) {
+    error.value = 'An error occurred';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleLink = (provider) => {
+  window.location.href = `http://localhost:3000/api/v1/auth/${provider}`;
+};
+
+const handleUnlink = async (provider) => {
+  if (!confirm(`Are you sure you want to unlink ${provider}?`)) return;
+
+  try {
+    const response = await fetch(
+      `http://localhost:3000/api/v1/auth/unlink-social/${provider}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authStore.token}` }
+      }
+    );
+
+    if (response.ok) {
+      fetchLinkedAccounts();
+    } else {
+      const errorData = await response.json();
+      error.value = errorData.error?.message || 'Failed to unlink';
+    }
+  } catch (err) {
+    error.value = 'An error occurred';
+  }
+};
+
+onMounted(() => {
+  fetchLinkedAccounts();
+});
+</script>
+
+<style scoped>
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.provider-card {
+  border: 1px solid #ddd;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-link {
+  background: #4caf50;
+  color: white;
+}
+
+.btn-unlink {
+  background: #f44336;
+  color: white;
+}
+</style>
+```
+
+## Vanilla JavaScript Implementation
+
+### 1. OAuth Buttons (HTML + JS)
+
+```html
+<!-- index.html -->
+<div class="oauth-buttons">
+  <button id="google-btn" class="oauth-btn google-btn">
+    Sign in with Google
+  </button>
+  <button id="facebook-btn" class="oauth-btn facebook-btn">
+    Sign in with Facebook
+  </button>
+  <button id="github-btn" class="oauth-btn github-btn">
+    Sign in with GitHub
+  </button>
+</div>
+
+<script src="oauth.js"></script>
+```
+
+```javascript
+// oauth.js
+function initializeOAuthButtons() {
+  const googleBtn = document.getElementById('google-btn');
+  const facebookBtn = document.getElementById('facebook-btn');
+  const githubBtn = document.getElementById('github-btn');
+
+  googleBtn?.addEventListener('click', () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/google';
+  });
+
+  facebookBtn?.addEventListener('click', () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/facebook';
+  });
+
+  githubBtn?.addEventListener('click', () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/github';
+  });
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initializeOAuthButtons);
+```
+
+### 2. OAuth Callback Handler (Vanilla JS)
+
+```javascript
+// callback.js
+class OAuthCallbackHandler {
+  constructor() {
+    this.init();
+  }
+
+  init() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const error = params.get('error');
+
+    if (error) {
+      this.showError(decodeURIComponent(error));
+    } else if (token) {
+      this.handleToken(token);
+    }
+  }
+
+  async handleToken(token) {
+    try {
+      localStorage.setItem('accessToken', token);
+      await this.fetchUserProfile(token);
+      window.location.href = '/dashboard';
+    } catch (error) {
+      this.showError('Failed to process login');
+    }
+  }
+
+  async fetchUserProfile(token) {
+    const response = await fetch(
+      'http://localhost:3000/api/v1/user/profile',
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user profile');
+    }
+
+    return response.json();
+  }
+
+  showError(message) {
+    document.body.innerHTML = `
+      <div class="error-container">
+        <h2>Login Error</h2>
+        <p>${message}</p>
+        <a href="/login">Back to Login</a>
+      </div>
+    `;
+  }
+}
+
+// Initialize
+new OAuthCallbackHandler();
+```
+
+### 3. Account Settings (Vanilla JS)
+
+```javascript
+// account-settings.js
+class AccountSettings {
+  constructor() {
+    this.token = localStorage.getItem('accessToken');
+    this.init();
+  }
+
+  async init() {
+    await this.fetchLinkedAccounts();
+    this.setupEventListeners();
+  }
+
+  async fetchLinkedAccounts() {
+    try {
+      const response = await fetch(
+        'http://localhost:3000/api/v1/auth/linked-accounts',
+        {
+          headers: { Authorization: `Bearer ${this.token}` }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        this.linkedAccounts = data.data;
+        this.render();
+      }
+    } catch (error) {
+      console.error('Failed to fetch linked accounts:', error);
+    }
+  }
+
+  setupEventListeners() {
+    document.querySelectorAll('.btn-link').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const provider = e.target.dataset.provider;
+        window.location.href = `http://localhost:3000/api/v1/auth/${provider}`;
+      });
+    });
+
+    document.querySelectorAll('.btn-unlink').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const provider = e.target.dataset.provider;
+        this.unlinkAccount(provider);
+      });
+    });
+  }
+
+  async unlinkAccount(provider) {
+    if (!confirm(`Are you sure you want to unlink ${provider}?`)) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/v1/auth/unlink-social/${provider}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${this.token}` }
+        }
+      );
+
+      if (response.ok) {
+        await this.fetchLinkedAccounts();
+      }
+    } catch (error) {
+      console.error('Failed to unlink account:', error);
+    }
+  }
+
+  render() {
+    const container = document.getElementById('providers-container');
+    const linked = this.linkedAccounts.linkedAccounts || [];
+
+    container.innerHTML = ['google', 'facebook', 'github']
+      .map((provider) => `
+        <div class="provider-card">
+          <h4>${provider.charAt(0).toUpperCase() + provider.slice(1)}</h4>
+          ${linked.includes(provider)
+            ? `
+              <p class="status">✓ Connected</p>
+              <button class="btn-unlink" data-provider="${provider}">
+                Disconnect
+              </button>
+            `
+            : `
+              <p class="status">Not connected</p>
+              <button class="btn-link" data-provider="${provider}">
+                Connect
+              </button>
+            `
+          }
+        </div>
+      `)
+      .join('');
+
+    this.setupEventListeners();
+  }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  new AccountSettings();
+});
+```
+
+## Common Patterns
+
+### 1. Loading State Management
+
+```javascript
+// React Example
+const [isLoading, setIsLoading] = useState(false);
+
+const handleLogin = async (provider) => {
+  setIsLoading(true);
+  try {
+    // OAuth redirect
+    window.location.href = `http://localhost:3000/api/v1/auth/${provider}`;
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+### 2. Error Handling
+
+```javascript
+// Centralized error handler
+const handleAuthError = (error) => {
+  const errorMessages = {
+    'OAUTH_FAILED': 'OAuth provider returned an error',
+    'ACCOUNT_LINKED': 'This account is already linked',
+    'UNAUTHORIZED': 'Please log in first',
+    'VALIDATION_ERROR': 'Please check your input'
+  };
+
+  return errorMessages[error.code] || error.message;
+};
+```
+
+### 3. Token Management
+
+```javascript
+// Storage helper
+class TokenManager {
+  static setToken(token) {
+    localStorage.setItem('accessToken', token);
+  }
+
+  static getToken() {
+    return localStorage.getItem('accessToken');
+  }
+
+  static clearToken() {
+    localStorage.removeItem('accessToken');
+  }
+
+  static isExpired() {
+    const token = this.getToken();
+    if (!token) return true;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  }
+}
+```
+
+## Environment Configuration
+
+### 1. React (.env)
+
+```
+VITE_API_URL=http://localhost:3000
+VITE_OAUTH_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_OAUTH_FACEBOOK_APP_ID=your_facebook_app_id
+VITE_OAUTH_GITHUB_CLIENT_ID=your_github_client_id
+```
+
+### 2. Vue (.env)
+
+```
+VITE_API_URL=http://localhost:3000
+VITE_OAUTH_GOOGLE_CLIENT_ID=your_google_client_id
+VITE_OAUTH_FACEBOOK_APP_ID=your_facebook_app_id
+VITE_OAUTH_GITHUB_CLIENT_ID=your_github_client_id
+```
+
+### 3. Use in Code
+
+```javascript
+// React
+const API_URL = import.meta.env.VITE_API_URL;
+
+// Vue
+const API_URL = import.meta.env.VITE_API_URL;
+```
+
+## Testing Social Login Locally
+
+### 1. Start Backend Server
+
+```bash
+npm start
+# Server runs on http://localhost:3000
+```
+
+### 2. Start Frontend Dev Server
+
+```bash
+# React
+npm run dev
+
+# Vue
+npm run dev
+```
+
+### 3. Test OAuth Flow
+
+1. Navigate to login page
+2. Click "Sign in with [Provider]"
+3. You'll be redirected to OAuth provider
+4. Complete authorization
+5. Backend will redirect to callback with token
+6. Frontend processes token and redirects to dashboard
+
+### 4. Test Callback Page
+
+```bash
+# Simulate callback (for testing)
+http://localhost:5173/auth/callback?token=YOUR_JWT_TOKEN
+```
+
+## Troubleshooting
+
+### Issue: Blank Page After OAuth Login
+
+**Solution**: Ensure callback endpoint returns token as URL parameter:
+```
+/auth/callback?token=JWT_TOKEN
+```
+
+### Issue: CORS Error
+
+**Solution**: Configure backend CORS to allow frontend origin:
+```javascript
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+```
+
+### Issue: Token Not Persisting
+
+**Solution**: Ensure localStorage is available and not blocked:
+```javascript
+try {
+  localStorage.setItem('test', 'test');
+  localStorage.removeItem('test');
+} catch (e) {
+  // localStorage is not available
+}
+```
+
+### Issue: Redirect Loop
+
+**Solution**: Check if token is being properly validated before redirecting:
+```javascript
+if (token && validateToken(token)) {
+  redirect('/dashboard');
+}
+```
+
+## Best Practices
+
+1. **Always validate tokens** before using them
+2. **Store tokens securely** (consider httpOnly cookies for sensitive apps)
+3. **Implement token refresh** for long-lived sessions
+4. **Handle errors gracefully** with user-friendly messages
+5. **Show loading states** during OAuth redirects
+6. **Clear tokens on logout** from all storage locations
+7. **Use HTTPS in production** for all OAuth communications
+8. **Implement rate limiting** on OAuth endpoints
+9. **Log OAuth events** for audit trails
+10. **Test with multiple providers** before production
+
+## Security Considerations
+
+- ✅ Validate JWT tokens on the backend
+- ✅ Use HTTPS for all OAuth communications
+- ✅ Store sensitive credentials in environment variables
+- ✅ Implement CSRF protection
+- ✅ Validate state parameter in OAuth flow
+- ✅ Use secure redirect URIs
+- ✅ Implement session timeout
+- ✅ Clear tokens on logout
+

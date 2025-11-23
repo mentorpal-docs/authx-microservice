@@ -51,7 +51,8 @@
         "concepts/authentication",
         "concepts/authorization",
         "concepts/tokens",
-        "concepts/security"
+        "concepts/security",
+        "concepts/social-login"
       ]
     },
     {
@@ -60,7 +61,8 @@
         "setup/installation",
         "setup/environment",
         "setup/database",
-        "setup/configuration"
+        "setup/configuration",
+        "setup/oauth-configuration"
       ]
     },
     {
@@ -69,7 +71,8 @@
         "development/local-setup",
         "development/running-server",
         "development/testing",
-        "development/debugging"
+        "development/debugging",
+        "development/social-login-frontend"
       ]
     },
     {
@@ -83,6 +86,17 @@
         "api-reference/auth/reset-password",
         "api-reference/auth/change-password",
         "api-reference/auth/verify-token"
+      ]
+    },
+    {
+      "group": "Social OAuth Endpoints",
+      "pages": [
+        "api-reference/auth/google-login",
+        "api-reference/auth/facebook-login",
+        "api-reference/auth/github-login",
+        "api-reference/auth/link-social",
+        "api-reference/auth/unlink-social",
+        "api-reference/auth/linked-accounts"
       ]
     },
     {

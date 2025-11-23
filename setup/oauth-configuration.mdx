@@ -1,0 +1,417 @@
+---
+title: "OAuth Configuration Setup"
+description: "Step-by-step guide to configure Google, Facebook, and GitHub OAuth credentials"
+---
+
+## OAuth Configuration Guide
+
+This guide walks you through setting up OAuth 2.0 credentials for Google, Facebook, and GitHub.
+
+## Prerequisites
+
+- Backend server running (Node.js, Express)
+- `.env` file in project root
+- Access to OAuth provider consoles (Google Cloud, Facebook Developers, GitHub)
+
+## Google OAuth Setup
+
+### Step 1: Create Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Click "Select a Project" → "New Project"
+3. Enter project name: `AuthX OAuth`
+4. Click "Create"
+
+### Step 2: Enable OAuth 2.0 API
+
+1. In the left sidebar, click "APIs & Services"
+2. Click "Library"
+3. Search for "Google+ API"
+4. Click "Google+ API"
+5. Click "Enable"
+
+### Step 3: Create OAuth Consent Screen
+
+1. Go to "APIs & Services" → "OAuth consent screen"
+2. Select "External" user type
+3. Click "Create"
+4. Fill in the form:
+   - **App name**: AuthX
+   - **User support email**: your-email@example.com
+   - **Authorized domains**: localhost (for development)
+5. Click "Save and Continue"
+6. Skip optional scopes
+7. Click "Save and Continue"
+8. Click "Back to Dashboard"
+
+### Step 4: Create OAuth Credentials
+
+1. Go to "APIs & Services" → "Credentials"
+2. Click "Create Credentials" → "OAuth client ID"
+3. Application type: "Web application"
+4. Name: `AuthX Web Client`
+5. **Authorized redirect URIs** - Add these:
+   ```
+   http://localhost:3000/api/v1/auth/google/callback
+   http://localhost:5173/auth/callback (frontend dev server)
+   ```
+6. Click "Create"
+7. Copy the Client ID and Client Secret
+
+### Step 5: Add to .env File
+
+```bash
+GOOGLE_OAUTH_CLIENT_ID=your_google_client_id_here
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret_here
+GOOGLE_OAUTH_CALLBACK_URL=http://localhost:3000/api/v1/auth/google/callback
+```
+
+### Step 6: Verify Scopes
+
+Default Google scopes used:
+```javascript
+scope: ['profile', 'email']
+```
+
+If you need additional scopes, update in `src/config/passport.js`:
+```javascript
+new GoogleStrategy({
+  clientID: process.env.GOOGLE_OAUTH_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  callbackURL: process.env.GOOGLE_OAUTH_CALLBACK_URL,
+  scope: ['profile', 'email'] // Modify here
+}, ...
+```
+
+## Facebook OAuth Setup
+
+### Step 1: Create Facebook App
+
+1. Go to [Facebook Developers](https://developers.facebook.com/)
+2. Click "My Apps" → "Create App"
+3. Choose app purpose: "Consumer"
+4. Fill in details:
+   - **App Name**: AuthX
+   - **App Contact Email**: your-email@example.com
+5. Click "Create App"
+
+### Step 2: Configure Facebook Login
+
+1. In your app dashboard, click "Add Product"
+2. Find "Facebook Login" and click "Set Up"
+3. Choose "Web"
+4. Enter your website URL: `http://localhost:3000`
+5. Click "Continue"
+
+### Step 3: Configure Valid OAuth Redirect URIs
+
+1. Go to "Settings" → "Basic"
+2. Copy your App ID and App Secret
+3. Go to "Facebook Login" → "Settings"
+4. Add to "Valid OAuth Redirect URIs":
+   ```
+   http://localhost:3000/api/v1/auth/facebook/callback
+   ```
+5. Save changes
+
+### Step 4: Add to .env File
+
+```bash
+FACEBOOK_OAUTH_APP_ID=your_facebook_app_id_here
+FACEBOOK_OAUTH_APP_SECRET=your_facebook_app_secret_here
+FACEBOOK_OAUTH_CALLBACK_URL=http://localhost:3000/api/v1/auth/facebook/callback
+```
+
+### Step 5: Configure App Roles
+
+For development/testing:
+1. Go to "Roles" → "Test Users"
+2. Create a test user account
+3. Use this account to test Facebook login
+
+For production:
+1. Submit app for review in "App Roles" → "App Review"
+2. Add required permissions scopes
+
+### Step 6: Set Scopes
+
+Default scopes used:
+```javascript
+scope: ['public_profile', 'email']
+```
+
+Modify in `src/config/passport.js` if needed:
+```javascript
+new FacebookStrategy({
+  clientID: process.env.FACEBOOK_OAUTH_APP_ID,
+  clientSecret: process.env.FACEBOOK_OAUTH_APP_SECRET,
+  callbackURL: process.env.FACEBOOK_OAUTH_CALLBACK_URL,
+  scope: ['public_profile', 'email'] // Modify here
+}, ...
+```
+
+## GitHub OAuth Setup
+
+### Step 1: Create GitHub OAuth App
+
+1. Log in to [GitHub](https://github.com/)
+2. Go to Settings → Developer settings → OAuth Apps
+3. Click "New OAuth App"
+4. Fill in the form:
+   - **Application name**: AuthX
+   - **Homepage URL**: `http://localhost:3000`
+   - **Authorization callback URL**: `http://localhost:3000/api/v1/auth/github/callback`
+5. Click "Register application"
+
+### Step 2: Copy Credentials
+
+1. On the OAuth App page, find:
+   - **Client ID**
+   - **Client Secret** (click "Generate a new client secret")
+2. Copy both values
+
+### Step 3: Add to .env File
+
+```bash
+GITHUB_OAUTH_CLIENT_ID=your_github_client_id_here
+GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret_here
+GITHUB_OAUTH_CALLBACK_URL=http://localhost:3000/api/v1/auth/github/callback
+```
+
+### Step 4: Update Callback URL for Production
+
+For production deployment:
+1. Go back to OAuth App settings
+2. Update "Authorization callback URL" to:
+   ```
+   https://your-domain.com/api/v1/auth/github/callback
+   ```
+3. Save changes
+
+### Step 5: Configure Scopes
+
+Default scopes used:
+```javascript
+scope: ['user:email']
+```
+
+This scope allows reading user's email addresses. Modify in `src/config/passport.js` if needed:
+```javascript
+new GitHubStrategy({
+  clientID: process.env.GITHUB_OAUTH_CLIENT_ID,
+  clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET,
+  callbackURL: process.env.GITHUB_OAUTH_CALLBACK_URL,
+  scope: ['user:email'] // Modify here
+}, ...
+```
+
+### Step 6: Note on Public Email
+
+GitHub requires users to have a public email for OAuth. If user doesn't have one:
+1. They won't be able to use GitHub OAuth
+2. Error message will indicate this
+3. User can make email public in GitHub settings
+
+## Complete .env Configuration
+
+Here's a complete example of all OAuth configuration in one place:
+
+```bash
+# App Configuration
+NODE_ENV=development
+PORT=3000
+API_URL=http://localhost:3000
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/authx
+MONGODB_TEST_URI=mongodb://localhost:27017/authx-test
+
+# JWT
+JWT_SECRET=your_jwt_secret_key_here
+JWT_EXPIRY=7d
+REFRESH_TOKEN_SECRET=your_refresh_token_secret_here
+REFRESH_TOKEN_EXPIRY=30d
+
+# Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM_EMAIL=noreply@authx.com
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Google OAuth
+GOOGLE_OAUTH_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=GOCSPX-xxxxx
+GOOGLE_OAUTH_CALLBACK_URL=http://localhost:3000/api/v1/auth/google/callback
+
+# Facebook OAuth
+FACEBOOK_OAUTH_APP_ID=xxxxxxxxxxxxxx
+FACEBOOK_OAUTH_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FACEBOOK_OAUTH_CALLBACK_URL=http://localhost:3000/api/v1/auth/facebook/callback
+
+# GitHub OAuth
+GITHUB_OAUTH_CLIENT_ID=Iv1.xxxxxxxxxxxxxxxx
+GITHUB_OAUTH_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_OAUTH_CALLBACK_URL=http://localhost:3000/api/v1/auth/github/callback
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:5173
+
+# Logging
+LOG_LEVEL=debug
+```
+
+## Testing OAuth Configuration
+
+### Test Google OAuth
+
+```bash
+curl "http://localhost:3000/api/v1/auth/google"
+# Should redirect to Google OAuth consent screen
+```
+
+### Test Facebook OAuth
+
+```bash
+curl "http://localhost:3000/api/v1/auth/facebook"
+# Should redirect to Facebook login page
+```
+
+### Test GitHub OAuth
+
+```bash
+curl "http://localhost:3000/api/v1/auth/github"
+# Should redirect to GitHub authorization page
+```
+
+## Production Deployment
+
+### 1. Update Callback URLs
+
+Before deploying, update all OAuth apps with production URLs:
+
+**Google Cloud Console:**
+```
+Authorized redirect URI: https://your-domain.com/api/v1/auth/google/callback
+```
+
+**Facebook Developers:**
+```
+Valid OAuth Redirect URI: https://your-domain.com/api/v1/auth/facebook/callback
+```
+
+**GitHub OAuth App:**
+```
+Authorization callback URL: https://your-domain.com/api/v1/auth/github/callback
+```
+
+### 2. Update Environment Variables
+
+```bash
+# Production .env
+GOOGLE_OAUTH_CALLBACK_URL=https://your-domain.com/api/v1/auth/google/callback
+FACEBOOK_OAUTH_CALLBACK_URL=https://your-domain.com/api/v1/auth/facebook/callback
+GITHUB_OAUTH_CALLBACK_URL=https://your-domain.com/api/v1/auth/github/callback
+CORS_ORIGIN=https://your-domain.com
+```
+
+### 3. Verify HTTPS
+
+Ensure all OAuth communications use HTTPS in production.
+
+### 4. Update Facebook App Status
+
+For Facebook:
+1. Go to "Settings" → "Basic"
+2. Set app status to "Live"
+3. Submit app for review if needed
+
+### 5. GitHub Scope Requirements
+
+For production, consider if you need additional scopes:
+```javascript
+// Current
+scope: ['user:email']
+
+// With profile info
+scope: ['user:email', 'read:user']
+
+// For public repos access
+scope: ['user:email', 'public_repo']
+```
+
+## Troubleshooting
+
+### Issue: Invalid Redirect URI
+
+**Cause**: Callback URL doesn't match what's registered with provider  
+**Solution**:
+1. Check `.env` callback URL
+2. Verify it matches exactly in OAuth app settings
+3. For localhost, ensure no trailing slashes
+
+### Issue: CORS Error
+
+**Cause**: Frontend origin not allowed  
+**Solution**:
+1. Add frontend URL to CORS_ORIGIN in `.env`
+2. Verify backend CORS middleware configuration
+3. Check browser console for exact error
+
+### Issue: Missing Scopes
+
+**Cause**: User permissions error from provider  
+**Solution**:
+1. Check scopes in `src/config/passport.js`
+2. Verify app is requesting required scopes
+3. For Facebook, ensure app has required permissions
+
+### Issue: Token Expiration
+
+**Cause**: OAuth token expires  
+**Solution**:
+1. Implement token refresh logic
+2. Use refresh tokens from OAuth provider
+3. Set appropriate token expiry in JWT configuration
+
+### Issue: User Email Not Provided
+
+**Cause**: Provider doesn't return email  
+**Solution**:
+
+**GitHub**: User must have public email
+```javascript
+// Add to GitHub strategy
+passReqToCallback: true,
+userProfileURL: 'https://api.github.com/user'
+```
+
+**Facebook**: Ensure public_profile and email scopes
+```javascript
+scope: ['public_profile', 'email']
+```
+
+## Verification Checklist
+
+- ✅ Google OAuth credentials created
+- ✅ Facebook OAuth app created
+- ✅ GitHub OAuth app created
+- ✅ All credentials added to `.env`
+- ✅ Callback URLs configured in all apps
+- ✅ Scopes verified
+- ✅ Test users created (for Facebook)
+- ✅ OAuth endpoints tested locally
+- ✅ Frontend successfully redirects to providers
+- ✅ Token received after authorization
+
+## Next Steps
+
+1. Start the backend server with `npm start`
+2. Configure frontend with OAuth client IDs
+3. Test OAuth flow with each provider
+4. Monitor logs for any authentication errors
+5. Implement frontend OAuth buttons (see Frontend Implementation Guide)
+

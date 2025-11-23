@@ -1,0 +1,152 @@
+---
+title: "Google OAuth Login"
+description: "Authenticate users with Google OAuth 2.0"
+api: "GET /api/v1/auth/google"
+---
+
+## Initiate Google OAuth Login
+
+Redirects the user to Google's OAuth consent screen where they can authenticate and grant permission to access their profile.
+
+<RequestExample>
+```bash
+GET /api/v1/auth/google
+```
+</RequestExample>
+
+### Parameters
+
+None. This endpoint is accessed via browser redirect or link.
+
+### Response
+
+The user is redirected to Google's OAuth endpoint. After authentication, Google redirects to the callback URL with an authorization code.
+
+### Callback URL
+
+After successful authentication with Google, the browser is redirected to:
+```
+GET /api/v1/auth/google/callback?code=...&state=...
+```
+
+This endpoint automatically:
+1. Exchanges the authorization code for tokens
+2. Fetches the user's profile from Google
+3. Creates or updates the user in the database
+4. Generates JWT tokens
+5. Redirects to the client with tokens
+
+### Client Redirect
+
+On successful authentication, the user is redirected to:
+```
+http://localhost:3001/auth/oauth-callback?accessToken=...&refreshToken=...&provider=google
+```
+
+### Query Parameters (Callback)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| accessToken | string | JWT access token for API requests |
+| refreshToken | string | Token used to refresh access token |
+| provider | string | OAuth provider name (google) |
+
+### Error Responses
+
+#### Invalid Redirect URI
+```json
+{
+  "error": "redirect_uri_mismatch",
+  "error_description": "The redirect URI registered in the console does not match the one supplied here"
+}
+```
+
+#### Access Denied
+```json
+{
+  "error": "access_denied",
+  "error_description": "The user denied access"
+}
+```
+
+#### Server Error
+```json
+{
+  "success": false,
+  "error": {
+    "code": "OAUTH_ERROR",
+    "message": "Google OAuth error: server_error"
+  }
+}
+```
+
+## User Data Extracted from Google
+
+When a user authenticates with Google, the following information is extracted:
+
+| Field | Source | Usage |
+|-------|--------|-------|
+| ID | `profile.id` | Social ID (stored in database) |
+| Email | `profile.emails[0].value` | User email |
+| Name | `profile.displayName` | First and last name |
+| Picture | `profile.photos[0].value` | Profile picture URL |
+
+## Example Implementation
+
+### React
+
+```jsx
+function GoogleSignInButton() {
+  const handleGoogleLogin = () => {
+    window.location.href = 'http://localhost:3000/api/v1/auth/google';
+  };
+
+  return (
+    <button onClick={handleGoogleLogin} className="btn btn-google">
+      Sign in with Google
+    </button>
+  );
+}
+```
+
+### HTML/JavaScript
+
+```html
+<a href="http://localhost:3000/api/v1/auth/google" class="btn btn-google">
+  Sign in with Google
+</a>
+```
+
+## Prerequisites
+
+1. **Google OAuth Credentials**
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Create OAuth 2.0 credentials
+   - Copy Client ID and Client Secret
+
+2. **Environment Variables**
+   ```env
+   GOOGLE_CLIENT_ID=your-client-id
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   GOOGLE_CALLBACK_URL=http://localhost:3000/api/v1/auth/google/callback
+   ```
+
+3. **Authorized Redirect URIs**
+   - Register callback URL in Google Cloud Console:
+   ```
+   http://localhost:3000/api/v1/auth/google/callback
+   ```
+
+## Scopes Requested
+
+The following Google OAuth scopes are requested:
+- `profile` - Access to user's profile information
+- `email` - Access to user's email address
+
+## Notes
+
+- This endpoint must be accessed from a browser (not from API client)
+- Callback URL must match exactly (protocol, domain, path)
+- HTTPS is required in production
+- Users are automatically logged in after successful authentication
+

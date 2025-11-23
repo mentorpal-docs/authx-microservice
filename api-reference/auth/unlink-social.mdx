@@ -1,0 +1,315 @@
+---
+title: "Unlink Social Account"
+description: "Remove a linked social OAuth account from user account"
+api: "DELETE /api/v1/auth/unlink-social/{provider}"
+---
+
+## Unlink OAuth Account from User
+
+Removes a linked OAuth provider (Google, Facebook, GitHub) from the authenticated user's account. The user must have an alternative authentication method (password) available.
+
+<RequestExample>
+```bash
+curl -X DELETE http://localhost:3000/api/v1/auth/unlink-social/google \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+</RequestExample>
+
+### Authentication
+
+**Required**: Yes  
+**Type**: Bearer Token (JWT)
+
+Include your JWT access token in the Authorization header:
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| provider | string | Yes | OAuth provider to unlink: `google`, `facebook`, or `github` |
+
+### Response
+
+#### Success Response
+```json
+{
+  "success": true,
+  "message": "google account unlinked successfully",
+  "data": {
+    "id": "user_id_123",
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "socialProvider": null,
+    "socialId": null,
+    "profilePicture": "https://...",
+    "role": "user",
+    "isEmailVerified": true,
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-20T15:45:00Z"
+  }
+}
+```
+
+### Error Responses
+
+#### 401 Unauthorized
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required"
+  }
+}
+```
+
+#### 400 Bad Request - Only Auth Method
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CANNOT_UNLINK_ONLY_AUTH_METHOD",
+    "message": "Cannot unlink your only authentication method. Please set a password first."
+  }
+}
+```
+
+#### 404 Not Found - Account Not Found
+```json
+{
+  "success": false,
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "User not found"
+  }
+}
+```
+
+#### 404 Not Found - Account Not Linked
+```json
+{
+  "success": false,
+  "error": {
+    "code": "SOCIAL_ACCOUNT_NOT_LINKED",
+    "message": "This social account is not linked to your profile"
+  }
+}
+```
+
+## Use Cases
+
+### 1. Remove Google Account
+Unlink Google from account with password already set:
+```
+DELETE /api/v1/auth/unlink-social/google
+```
+
+### 2. Remove Facebook Account
+Unlink Facebook from account:
+```
+DELETE /api/v1/auth/unlink-social/facebook
+```
+
+### 3. Remove GitHub Account
+Unlink GitHub from account:
+```
+DELETE /api/v1/auth/unlink-social/github
+```
+
+## Implementation Example
+
+### React Component
+
+```jsx
+import axios from 'axios';
+import { useState } from 'react';
+
+function UnlinkSocialAccount() {
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleUnlinkGoogle = async () => {
+    if (!window.confirm('Are you sure you want to unlink Google account?')) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await axios.delete(
+        'http://localhost:3000/api/v1/auth/unlink-social/google',
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      );
+
+      setMessage('Google account unlinked successfully');
+      setError('');
+    } catch (err) {
+      const errorMsg = err.response?.data?.error?.message;
+      
+      if (errorMsg?.includes('only authentication method')) {
+        setError('You must set a password before unlinking your only auth method');
+      } else {
+        setError(errorMsg || 'Failed to unlink account');
+      }
+      
+      setMessage('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="unlink-account">
+      <h3>Manage Social Accounts</h3>
+      {message && <p className="success">{message}</p>}
+      {error && <p className="error">{error}</p>}
+      
+      <button 
+        onClick={handleUnlinkGoogle} 
+        disabled={isLoading}
+        className="btn-danger"
+      >
+        {isLoading ? 'Processing...' : 'Unlink Google Account'}
+      </button>
+    </div>
+  );
+}
+
+export default UnlinkSocialAccount;
+```
+
+### Form with Confirmation
+
+```jsx
+import axios from 'axios';
+import { useState } from 'react';
+
+function AccountSettings() {
+  const [linkedAccounts, setLinkedAccounts] = useState({});
+  const [password, setPassword] = useState('');
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  const handleUnlinkClick = (provider) => {
+    // If only OAuth account, ask user to set password first
+    if (!linkedAccounts.hasPassword) {
+      setShowPasswordForm(true);
+      return;
+    }
+
+    // Otherwise, confirm and unlink
+    if (window.confirm(`Unlink ${provider} account?`)) {
+      handleUnlinkAccount(provider);
+    }
+  };
+
+  const handleUnlinkAccount = async (provider) => {
+    try {
+      await axios.delete(
+        `http://localhost:3000/api/v1/auth/unlink-social/${provider}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      );
+      
+      // Refresh linked accounts list
+      fetchLinkedAccounts();
+    } catch (error) {
+      console.error('Failed to unlink:', error);
+    }
+  };
+
+  const fetchLinkedAccounts = async () => {
+    try {
+      const response = await axios.get(
+        'http://localhost:3000/api/v1/auth/linked-accounts',
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      );
+      setLinkedAccounts(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch linked accounts:', error);
+    }
+  };
+
+  return (
+    <div className="account-settings">
+      {/* Password form if needed */}
+      {showPasswordForm && (
+        <div className="password-form">
+          <p>Set a password first before unlinking OAuth accounts</p>
+          <input
+            type="password"
+            placeholder="New password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button onClick={() => setShowPasswordForm(false)}>Set Password</button>
+        </div>
+      )}
+
+      {/* Linked accounts list */}
+      <div className="linked-accounts">
+        <h3>Linked Accounts</h3>
+        {linkedAccounts.linkedAccounts?.includes('google') && (
+          <button onClick={() => handleUnlinkClick('google')}>
+            Unlink Google
+          </button>
+        )}
+        {linkedAccounts.linkedAccounts?.includes('facebook') && (
+          <button onClick={() => handleUnlinkClick('facebook')}>
+            Unlink Facebook
+          </button>
+        )}
+        {linkedAccounts.linkedAccounts?.includes('github') && (
+          <button onClick={() => handleUnlinkClick('github')}>
+            Unlink GitHub
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default AccountSettings;
+```
+
+## Security Considerations
+
+1. **Confirmation Required**: Always confirm with user before unlinking
+2. **Alternative Auth Method**: Require password before allowing unlink of only auth method
+3. **Endpoint Protection**: This endpoint requires JWT authentication
+4. **Audit Logging**: All unlink operations are logged for security audit
+
+## Important Notes
+
+- You cannot unlink an OAuth account if it's your only login method
+- You must have a password set to unlink OAuth accounts
+- If you only have OAuth and no password, use "Change Password" endpoint first
+- Unlinking is immediate and cannot be reversed (must re-authenticate with provider)
+
+## Scenarios
+
+### Scenario 1: User with Password + OAuth
+✅ Can unlink OAuth - still has password to login
+
+### Scenario 2: User with Only OAuth (No Password)
+❌ Cannot unlink - would have no login method
+- Solution: Set password first via `POST /api/v1/auth/change-password`
+
+### Scenario 3: User with Multiple OAuth Providers
+✅ Can unlink one provider - still has other(s)
+
